@@ -155,7 +155,7 @@ export function Rastreador() {
                       </CardDescription>
                     </div>
                     <Badge className="text-sm font-medium px-3 py-1" style={{ backgroundColor: result.etapaInfo?.color || '#f59e0b', color: 'white' }}>
-                      {result.etapaInfo?.estado || result.estado}
+                      {result.estado}
                     </Badge>
                   </div>
                 </CardHeader>

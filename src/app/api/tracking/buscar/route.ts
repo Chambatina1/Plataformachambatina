@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { normalizarCPK, estadoPorTiempo } from '@/lib/chambatina';
+import { normalizarCPK, estadoPorTiempo, ETAPAS } from '@/lib/chambatina';
+
+// Map real estado string to matching ETAPA for timeline display
+function matchEtapa(estado: string) {
+  const upper = estado.toUpperCase().trim();
+  for (const etapa of ETAPAS) {
+    if (upper === etapa.estado || upper.includes(etapa.estado)) {
+      return etapa;
+    }
+  }
+  // Fallback mappings for common variations
+  if (upper.includes('ENTREGADO')) return ETAPAS.find(e => e.estado === 'ENTREGADO');
+  if (upper.includes('DISTRIBUCION') || upper.includes('DISTRIBUCIÓN') || upper.includes('REPARTO')) return ETAPAS.find(e => e.estado === 'EN DISTRIBUCION');
+  if (upper.includes('ADUANA')) return ETAPAS.find(e => e.estado === 'EN ADUANA');
+  if (upper.includes('TRANSITO') || upper.includes('TRÁNSITO')) return ETAPAS.find(e => e.estado === 'EN TRANSITO');
+  if (upper.includes('AGENCIA') || upper.includes('RECIBIDO') || upper.includes('PENDIENTE')) return ETAPAS.find(e => e.estado === 'EN AGENCIA');
+  if (upper.includes('EMBARCADO')) return ETAPAS.find(e => e.estado === 'EN AGENCIA');
+  return null;
+}
 
 // GET /api/tracking/buscar?cpk=XXX or ?carnet=XXX
 export async function GET(request: NextRequest) {
@@ -21,13 +39,6 @@ export async function GET(request: NextRequest) {
         where: { cpk: normalizedCPK },
         orderBy: { createdAt: 'desc' },
       });
-
-      // Add calculated estado based on date
-      results = results.map(entry => ({
-        ...entry,
-        estadoCalculado: estadoPorTiempo(entry.fecha || '').estado,
-        etapaInfo: estadoPorTiempo(entry.fecha || ''),
-      }));
     } else if (carnet) {
       const normalizedCarnet = carnet.replace(/\s/g, '');
       const allEntries = await db.trackingEntry.findMany({
@@ -38,13 +49,18 @@ export async function GET(request: NextRequest) {
         if (!e.carnetPrincipal) return false;
         return e.carnetPrincipal.replace(/\s/g, '').includes(normalizedCarnet);
       });
+    }
 
-      results = results.map(entry => ({
+    // Add etapaInfo for timeline display - prioritize real estado, fallback to calculated
+    results = (results || []).map(entry => {
+      const matchedEtapa = matchEtapa(entry.estado);
+      const etapaInfo = matchedEtapa || estadoPorTiempo(entry.fecha || '');
+      return {
         ...entry,
         estadoCalculado: estadoPorTiempo(entry.fecha || '').estado,
-        etapaInfo: estadoPorTiempo(entry.fecha || ''),
-      }));
-    }
+        etapaInfo,
+      };
+    });
 
     return NextResponse.json({ ok: true, data: results });
   } catch (error) {

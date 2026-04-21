@@ -119,13 +119,39 @@ export function parsearTrackingTSV(texto: string): TrackingParsed[] {
   const lineas = texto.trim().split('\n').filter(line => line.trim().length > 0);
   const resultados: TrackingParsed[] = [];
 
+  // Estado keywords
+  const ESTADO_KEYWORDS = [
+    { regex: /ENTREGADO/i, estado: 'ENTREGADO' },
+    { regex: /EN DISTRIBUCION|EN DISTRIBUCIÓN|REPARTO/i, estado: 'EN DISTRIBUCION' },
+    { regex: /EN ADUANA/i, estado: 'EN ADUANA' },
+    { regex: /EN TRANSITO|EN TRÁNSITO|TRANSITO/i, estado: 'EN TRANSITO' },
+    { regex: /EN AGENCIA|RECIBIDO|PENDIENTE/i, estado: 'EN AGENCIA' },
+    { regex: /DESGRUPE/i, estado: 'PENDIENTE DESGRUPE' },
+    { regex: /EMBARCADO/i, estado: 'EMBARCADO' },
+  ];
+
+  // Helper: check if a column looks like a person name (2+ words, mostly letters)
+  function looksLikeName(text: string): boolean {
+    if (!text || text.length < 5) return false;
+    // Names typically have 2+ words, mostly uppercase letters with spaces
+    const words = text.split(/\s+/);
+    if (words.length < 2) return false;
+    const letterRatio = (text.replace(/[^a-zA-ZáéíóúñÁÉÍÓÚÑüÜ]/g, '').length) / text.length;
+    return letterRatio > 0.7 && !/CPK/i.test(text) && !/\d{4}-\d{2}-\d{2}/.test(text);
+  }
+
+  // Helper: check if a column is an estado keyword
+  function isEstadoKeyword(text: string): boolean {
+    return ESTADO_KEYWORDS.some(e => e.regex.test(text));
+  }
+
   for (const linea of lineas) {
-    const columnas = linea.split('\t').map(c => c.trim());
-    if (columnas.length < 5) continue;
+    const columnas = linea.split('\t').map(c => c.trim()).filter(c => c.length > 0);
+    if (columnas.length < 4) continue;
 
     let cpk = '';
     let fecha: string | null = null;
-    let estado = 'EMBARCADO';
+    let estado = '';
     let descripcion: string | null = null;
     let embarcador: string | null = null;
     let consignatario: string | null = null;
@@ -136,8 +162,7 @@ export function parsearTrackingTSV(texto: string): TrackingParsed[] {
     if (cpkMatch) {
       cpk = `CPK-${cpkMatch[1]}`;
     } else {
-      // Try column 2 or 3 for CPK
-      for (let i = 2; i < Math.min(columnas.length, 5); i++) {
+      for (let i = 0; i < Math.min(columnas.length, 6); i++) {
         if (/CPK/i.test(columnas[i])) {
           const numMatch = columnas[i].match(/(\d+)/);
           cpk = numMatch ? `CPK-${numMatch[1]}` : columnas[i];
@@ -148,63 +173,126 @@ export function parsearTrackingTSV(texto: string): TrackingParsed[] {
 
     if (!cpk) continue;
 
-    // Find date
+    // Find date (YYYY-MM-DD format)
     const fechaMatch = linea.match(/(\d{4}-\d{2}-\d{2})/);
     if (fechaMatch) {
       fecha = fechaMatch[1];
     }
 
-    // Find carnet (8-12 digit number)
+    // Find carnet (8-12 digit number, skip dates and phone-like numbers)
     const carnetRegex = /(?<!\d)(\d{8,12})(?!\d)/g;
     let carnetMatch: RegExpExecArray | null;
     while ((carnetMatch = carnetRegex.exec(linea)) !== null) {
-      // Skip if it looks like a phone number (starts with 5 or 7 and has specific length)
       const num = carnetMatch[1];
-      if (!num.startsWith('54357818')) {
-        carnetPrincipal = num;
+      // Skip if it's part of a date
+      if (/\d{4}-\d{2}-\d{2}/.test(carnetMatch.input.substring(Math.max(0, carnetMatch.index - 2), carnetMatch.index + num.length + 2))) continue;
+      // Skip known non-carnet numbers
+      if (num.startsWith('54357818')) continue;
+      carnetPrincipal = num;
+      break;
+    }
+
+    // Find estado from each column (not the whole line, to be more precise)
+    for (const col of columnas) {
+      if (isEstadoKeyword(col)) {
+        for (const ek of ESTADO_KEYWORDS) {
+          if (ek.regex.test(col)) {
+            estado = ek.estado;
+            break;
+          }
+        }
         break;
       }
     }
-
-    // Find estado keywords
-    if (/EMBARCADO/i.test(linea)) estado = 'EMBARCADO';
-    else if (/EN AGENCIA|RECIBIDO/i.test(linea)) estado = 'EN AGENCIA';
-    else if (/TRANSITO|TRANSITO HACIA CUBA/i.test(linea)) estado = 'EN TRANSITO HACIA CUBA';
-    else if (/ADUANA/i.test(linea)) estado = 'EN ADUANA CUBA';
-    else if (/DISTRIBUCION|REPARTO/i.test(linea)) estado = 'EN DISTRIBUCION';
-    else if (/ENTREGADO/i.test(linea)) estado = 'ENTREGADO';
-
-    // Find description (long text fields - usually product description)
-    for (let i = 0; i < columnas.length; i++) {
-      const col = columnas[i];
-      if (col.length > 10 && /[a-zA-Z]{3,}/.test(col) && !/CPK/i.test(col) && !/\d{4}-\d{2}-\d{2}/.test(col)) {
-        if (!descripcion || col.length > descripcion.length) {
-          descripcion = col;
+    // Fallback: check whole line if no column matched
+    if (!estado) {
+      for (const ek of ESTADO_KEYWORDS) {
+        if (ek.regex.test(linea)) {
+          estado = ek.estado;
+          break;
         }
       }
     }
+    if (!estado) estado = 'EMBARCADO';
 
-    // Find consignatario (name after date column)
-    if (fecha) {
-      const fechaIndex = columnas.findIndex(c => c.includes(fecha!));
-      if (fechaIndex >= 0 && fechaIndex + 1 < columnas.length) {
-        consignatario = columnas[fechaIndex + 1];
-      }
-    }
+    // Find date column index to help with relative positioning
+    const fechaIndex = fecha ? columnas.findIndex(c => c.includes(fecha!)) : -1;
+    const cpkColIndex = columnas.findIndex(c => /CPK/i.test(c));
 
-    // Embarcador is usually the first company-like column
+    // Identify columns after CPK: date → estado → descripcion → consignatario → carnet
+    // Start from the column after CPK
+    const afterCPK = cpkColIndex >= 0 ? columnas.slice(cpkColIndex + 1) : columnas;
+
+    // Find embarcador (first company-like column)
     for (const col of columnas) {
-      if (/CHAMBATINA|MIAMI|GEO/i.test(col) && !cpk.includes(col)) {
+      if (/CHAMBATINA|MIAMI|GEO/i.test(col) && !/CPK/i.test(col)) {
         embarcador = col;
         break;
       }
+    }
+
+    // Now identify descripcion and consignatario from columns after CPK
+    // Skip: date column, estado column, carnet column, embarcador column, empty columns
+    const usedIndices = new Set<number>();
+    if (fechaIndex >= 0) usedIndices.add(fechaIndex);
+    if (cpkColIndex >= 0) usedIndices.add(cpkColIndex);
+
+    // Find estado column index
+    let estadoColIndex = -1;
+    for (let i = 0; i < columnas.length; i++) {
+      if (isEstadoKeyword(columnas[i])) { estadoColIndex = i; usedIndices.add(i); break; }
+    }
+
+    // Find carnet column index
+    let carnetColIndex = -1;
+    for (let i = 0; i < columnas.length; i++) {
+      if (carnetPrincipal && columnas[i].includes(carnetPrincipal)) { carnetColIndex = i; usedIndices.add(i); break; }
+    }
+
+    // Find embarcador column index
+    let embarcadorColIndex = -1;
+    for (let i = 0; i < columnas.length; i++) {
+      if (embarcador && columnas[i] === embarcador) { embarcadorColIndex = i; usedIndices.add(i); break; }
+    }
+
+    // Remaining columns after CPK that aren't used are candidates for descripcion and consignatario
+    const candidates: { index: number; text: string }[] = [];
+    for (let i = cpkColIndex + 1; i < columnas.length; i++) {
+      if (!usedIndices.has(i) && columnas[i].length > 0) {
+        candidates.push({ index: i, text: columnas[i] });
+      }
+    }
+
+    // Separate: names go to consignatario, other text goes to descripcion
+    const names: string[] = [];
+    const descs: string[] = [];
+    for (const c of candidates) {
+      if (looksLikeName(c.text)) {
+        names.push(c.text);
+      } else {
+        descs.push(c.text);
+      }
+    }
+
+    // Last name-like candidate is likely the consignatario
+    if (names.length > 0) {
+      consignatario = names[names.length - 1];
+    }
+
+    // First non-name candidate is likely the descripcion
+    if (descs.length > 0) {
+      descripcion = descs[0];
+    } else if (names.length > 1) {
+      // If no descripcion candidates, first name might be a description
+      descripcion = names[0];
+      consignatario = names[names.length - 1];
     }
 
     resultados.push({
       cpk: normalizarCPK(cpk),
       fecha,
       embarque: estado,
-      estado: estadoPorTiempo(fecha || new Date().toISOString().split('T')[0]).estado,
+      estado, // Keep the real parsed estado, NOT the calculated one
       descripcion,
       embarcador,
       consignatario,
@@ -288,14 +376,11 @@ export function detectarIntencion(mensaje: string): DetectedIntent {
     return { intent: 'tracking_info', data: {} };
   }
 
-  // Location query
+  // Contact/Location query - return empty data, API will fill from config
   if (/donde estan|ubicacion|direccion|oficina|como llegar|horario|telefono|contacto|contactar/i.test(msg)) {
     return {
       intent: 'contacto',
-      data: {
-        direccion: '7523 Aloma Ave, Winter Park, FL 32792, Suite 112',
-        telefonos: ['786-942-6904 (Geo)', '786-784-6421 (Adriana)'],
-      },
+      data: {},
     };
   }
 

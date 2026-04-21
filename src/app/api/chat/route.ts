@@ -3,6 +3,41 @@ import { db } from '@/lib/db';
 import { detectarIntencion, BUSINESS_CONTEXT, calcularEnvio, BICICLETAS, CAJAS } from '@/lib/chambatina';
 import ZAI from 'z-ai-web-dev-sdk';
 
+// Config keys and their defaults
+const CONFIG_DEFAULTS: Record<string, string> = {
+  direccion: '7523 Aloma Ave, Winter Park, FL 32792, Suite 112',
+  telefono1: '786-942-6904',
+  nombre_contacto1: 'Geo',
+  telefono2: '786-784-6421',
+  nombre_contacto2: 'Adriana',
+  telefono3: '',
+  nombre_contacto3: '',
+  horario: 'Lunes a Viernes 9:00 AM - 6:00 PM',
+  email: '',
+  whatsapp: '',
+  instagram: '',
+  facebook: '',
+};
+
+async function getConfig(keys: string[]): Promise<Record<string, string>> {
+  try {
+    const entries = await db.config.findMany({
+      where: { clave: { in: keys } },
+    });
+    const result: Record<string, string> = {};
+    for (const k of keys) {
+      const entry = entries.find(e => e.clave === k);
+      result[k] = entry?.valor || CONFIG_DEFAULTS[k] || '';
+    }
+    return result;
+  } catch {
+    // Fallback to defaults
+    const result: Record<string, string> = {};
+    for (const k of keys) result[k] = CONFIG_DEFAULTS[k] || '';
+    return result;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -58,26 +93,18 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'contacto': {
-        // Read dynamic config
-        let direccion = '7523 Aloma Ave, Winter Park, FL 32792, Suite 112';
-        let telefonos = 'Geo: **786-942-6904**\n- Adriana: **786-784-6421**';
-        try {
-          const cfgRes = await fetch('http://localhost:3000/api/config?keys=direccion,telefono1,nombre_contacto1,telefono2,nombre_contacto2,telefono3,nombre_contacto3,horario,email,whatsapp');
-          const cfg = await cfgRes.json();
-          if (cfg.ok) {
-            const d = cfg.data;
-            direccion = d.direccion || direccion;
-            const lines: string[] = [];
-            if (d.telefono1) lines.push(`${d.nombre_contacto1 || 'Tel'}: **${d.telefono1}**`);
-            if (d.telefono2) lines.push(`${d.nombre_contacto2 || 'Tel'}: **${d.telefono2}**`);
-            if (d.telefono3) lines.push(`${d.nombre_contacto3 || 'Tel'}: **${d.telefono3}**`);
-            telefonos = lines.join('\n- ') || telefonos;
-            if (d.whatsapp) telefonos += `\n- WhatsApp: **${d.whatsapp}**`;
-            if (d.email) telefonos += `\n- Email: **${d.email}**`;
-            if (d.horario) telefonos += `\n\n⏰ **Horario:** ${d.horario}`;
-          }
-        } catch { /* use defaults */ }
-        respuesta = `📍 **Información de Contacto:**\n\n🏢 **Oficina:** ${direccion}\n\n📞 **Teléfonos:**\n- ${telefonos}`;
+        const d = await getConfig(['direccion', 'telefono1', 'nombre_contacto1', 'telefono2', 'nombre_contacto2', 'telefono3', 'nombre_contacto3', 'horario', 'email', 'whatsapp']);
+        const direccion = d.direccion;
+        const lines: string[] = [];
+        if (d.telefono1) lines.push(`${d.nombre_contacto1 || 'Tel'}: **${d.telefono1}**`);
+        if (d.telefono2) lines.push(`${d.nombre_contacto2 || 'Tel'}: **${d.telefono2}**`);
+        if (d.telefono3) lines.push(`${d.nombre_contacto3 || 'Tel'}: **${d.telefono3}**`);
+        let telefonos = lines.join('\n- ');
+        if (d.whatsapp) telefonos += `\n- WhatsApp: **${d.whatsapp}**`;
+        if (d.email) telefonos += `\n- Email: **${d.email}**`;
+        let horarioStr = '';
+        if (d.horario) horarioStr = `\n\n⏰ **Horario:** ${d.horario}`;
+        respuesta = `📍 **Información de Contacto:**\n\n🏢 **Oficina:** ${direccion}\n\n📞 **Teléfonos:**\n- ${telefonos}${horarioStr}`;
         break;
       }
 
@@ -86,18 +113,11 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'solar': {
-        let solarPhones = '📞 **786-942-6904** (Geo)\n📞 **786-784-6421** (Adriana)';
-        try {
-          const cfgRes = await fetch('http://localhost:3000/api/config?keys=telefono1,nombre_contacto1,telefono2,nombre_contacto2');
-          const cfg = await cfgRes.json();
-          if (cfg.ok) {
-            const d = cfg.data;
-            const lines: string[] = [];
-            if (d.telefono1) lines.push(`📞 **${d.telefono1}** (${d.nombre_contacto1 || 'Contacto'})`);
-            if (d.telefono2) lines.push(`📞 **${d.telefono2}** (${d.nombre_contacto2 || 'Contacto'})`);
-            solarPhones = lines.join('\n');
-          }
-        } catch { /* use defaults */ }
+        const sd = await getConfig(['telefono1', 'nombre_contacto1', 'telefono2', 'nombre_contacto2']);
+        const solarLines: string[] = [];
+        if (sd.telefono1) solarLines.push(`📞 **${sd.telefono1}** (${sd.nombre_contacto1 || 'Contacto'})`);
+        if (sd.telefono2) solarLines.push(`📞 **${sd.telefono2}** (${sd.nombre_contacto2 || 'Contacto'})`);
+        const solarPhones = solarLines.join('\n') || '📞 Contacta a la oficina';
         respuesta = `☀️ **Sistemas de Energía Solar:**\n\nChambatina ofrece orientación y productos de energía solar, incluyendo sistemas **EcoFlow**.\n\nPara más información sobre productos y precios, te recomendamos contactar directamente a la oficina:\n${solarPhones}`;
         break;
       }

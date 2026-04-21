@@ -82,10 +82,10 @@ Task: Restructure Chambatina - Public/Admin Split + PWA + Tracking Paste
 
 Work Log:
 - Read all 15 existing source files to understand full project structure
-- Restructured Zustand store (`store.ts`): added `isAdmin`, `isLoggedIn`, `login()`, `logout()`, `mode` (public/admin), `showLoginDialog`, `pendingAdminView` for seamless login→redirect flow
+- Restructured Zustand store (`store.ts`): added `isAdmin`, `isLoggedIn`, `login()`, `logout()`, `mode` (public/admin), `showLoginDialog`, `pendingAdminView` for seamless login-redirect flow
 - Created `login-dialog.tsx`: password-protected admin login modal with Chambatina branding, error states, loading feedback (password: `chambatina2024`)
-- Rewrote `navbar.tsx` with dual navigation system: `PublicNavbar` (Inicio, Tienda, Rastreador, Chat IA, Admin lock icon) and `AdminNavbar` (Dashboard, Pedidos, Tracking, Cerrar Sesión, Ir al Sitio) with mobile bottom tab bars for both
-- Created `admin-dashboard.tsx`: 4 stat cards (Total, Pendientes, En Tránsito, Entregados), quick links to Pedidos and Tracking, recent orders table
+- Rewrote `navbar.tsx` with dual navigation system: `PublicNavbar` (Inicio, Tienda, Rastreador, Chat IA, Admin lock icon) and `AdminNavbar` (Dashboard, Pedidos, Tracking, Cerrar Sesion, Ir al Sitio) with mobile bottom tab bars for both
+- Created `admin-dashboard.tsx`: 4 stat cards (Total, Pendientes, En Transito, Entregados), quick links to Pedidos and Tracking, recent orders table
 - Created `tracking-upload.tsx`: large TSV paste area, "Cargar Datos" button, filterable entries table, "Limpiar Datos" button with DELETE endpoint, status messages
 - Added DELETE handler to `/api/tracking/route.ts` for clearing all tracking entries
 - Updated `page.tsx`: mode-based SPA routing with `AnimatePresence` transitions between public and admin views, integrated `LoginDialog`
@@ -93,7 +93,7 @@ Work Log:
 - Created `pwa-register.tsx`: client component for service worker registration
 - Created `/public/manifest.json`: PWA manifest with Chambatina branding
 - Created `/public/sw.js`: basic service worker with cache-first strategy
-- Updated `pedido-form.tsx`, `pedido-detail.tsx`, `home.tsx`, `rastreador.tsx`: migrated from old store API (`currentView`, `setCurrentView`) to new admin-aware API (`adminView`, `setAdminView`, `goToNuevoPedido`)
+- Updated `pedido-form.tsx`, `pedido-detail.tsx`, `home.tsx`, `rastreador.tsx`: migrated from old store API to new admin-aware API
 - Removed admin TSV upload section from public `rastreador.tsx` (moved to admin-only `tracking-upload.tsx`)
 - Verified `chat/route.ts` already uses `z-ai-web-dev-sdk` (no OpenAI dependency)
 - Seeded 9 tracking entries from sample TSV data into SQLite database
@@ -102,8 +102,38 @@ Stage Summary:
 - Public/Admin split fully implemented with password-protected admin panel
 - Public users see: Inicio, Tienda, Rastreador, Chat IA (bottom tab bar)
 - Admin users see: Dashboard, Pedidos, Tracking (separate bottom tab bar with ADMIN badge)
-- Login dialog auto-opens when user tries admin-only actions (e.g., "Hacer un Envío")
+- Login dialog auto-opens when user tries admin-only actions
 - PWA fully configured: manifest.json, service worker, Apple meta tags
 - Tracking upload is admin-only with TSV paste, filter, and clear functionality
 - All UI text in Spanish, amber/orange branding, mobile responsive
 - ESLint passes with zero errors, dev server compiles successfully
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Verify and fix the CHAMBATINA system - tracking, config, end-to-end flow
+
+Work Log:
+- Reviewed all project files to understand current state
+- Fixed chat API (`/api/chat/route.ts`): replaced localhost:3000 HTTP calls with direct Prisma DB reads via getConfig() helper function
+- Fixed TSV parser (`/src/lib/chambatina.ts`): estado, consignatario, descripcion were incorrectly assigned
+  - Parser now correctly identifies estado keywords per-column (not per-line)
+  - Added looksLikeName() helper to distinguish person names from estado keywords
+  - Consignatario now correctly gets person names, not estado text
+  - Descripcion now correctly gets product descriptions
+  - estado field now stores the REAL parsed estado, not the date-based estimate
+- Fixed buscar API (`/api/tracking/buscar/route.ts`): added matchEtapa() to map real estado to ETAPA for timeline display
+  - Real estado from TSV is now prioritized over estadoPorTiempo() estimation
+- Updated rastreador component to show real estado in badge
+- Updated detectarIntencion() to not hardcode contact info (reads from config dynamically)
+- Ran full end-to-end test:
+  - Admin pastes TSV with 3 CPK entries - correctly parsed and stored
+  - Client searches by CPK - gets correct info (estado, consignatario, descripcion, carnet)
+  - Client searches by carnet - finds matching entry
+  - Config panel changes address/phone - saved to DB and verified retrieval
+
+Stage Summary:
+- All tracking, config, and public-facing features verified working end-to-end
+- Key bug fixes: TSV parser field assignment, buscar API estado matching, chat API config reading
+- Build passes cleanly, all 12 API routes operational
+- System is ready for deployment
