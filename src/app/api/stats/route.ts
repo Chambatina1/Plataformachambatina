@@ -1,45 +1,54 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/pg';
+import { db } from '@/lib/db';
 
 // GET /api/stats - Dashboard statistics
 export async function GET() {
   try {
-    // Total pedidos
-    const totalResult = await pool.query('SELECT COUNT(*) as total FROM pedidos');
-    const totalPedidos = parseInt(totalResult.rows[0].total, 10);
+    const [
+      total,
+      pendientes,
+      enProceso,
+      enTransito,
+      enAduana,
+      entregados,
+      cancelados,
+      recentOrders,
+    ] = await Promise.all([
+      db.pedido.count(),
+      db.pedido.count({ where: { estado: 'pendiente' } }),
+      db.pedido.count({ where: { estado: 'en_proceso' } }),
+      db.pedido.count({ where: { estado: 'en_transito' } }),
+      db.pedido.count({ where: { estado: 'en_aduana' } }),
+      db.pedido.count({ where: { estado: 'entregado' } }),
+      db.pedido.count({ where: { estado: 'cancelado' } }),
+      db.pedido.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+    ]);
 
-    // Count by estado
-    const estadoResult = await pool.query(
-      `SELECT estado, COUNT(*) as count FROM pedidos GROUP BY estado`
-    );
-    const porEstado: Record<string, number> = {
-      pendiente: 0,
-      en_proceso: 0,
-      entregado: 0,
-      cancelado: 0,
-    };
-    for (const row of estadoResult.rows) {
-      porEstado[row.estado] = parseInt(row.count, 10);
-    }
-
-    // Last 5 orders
-    const ultimosResult = await pool.query(
-      'SELECT * FROM pedidos ORDER BY created_at DESC LIMIT 5'
-    );
+    const trackingCount = await db.trackingEntry.count();
 
     return NextResponse.json({
-      success: true,
+      ok: true,
       data: {
-        totalPedidos,
-        porEstado,
-        ultimosPedidos: ultimosResult.rows,
+        pedidos: {
+          total,
+          pendientes,
+          enProceso,
+          enTransito,
+          enAduana,
+          entregados,
+          cancelados,
+        },
+        tracking: {
+          total: trackingCount,
+        },
+        recentOrders,
       },
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
-    return NextResponse.json(
-      { success: false, error: 'Error al obtener las estadísticas' },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: 'Error al obtener estadísticas' }, { status: 500 });
   }
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/pg';
+import { db } from '@/lib/db';
+
+const ESTADOS_VALIDOS = ['pendiente', 'en_proceso', 'en_transito', 'en_aduana', 'entregado', 'cancelado'];
 
 // PATCH /api/pedidos/[id]/estado - Update pedido status
 export async function PATCH(
@@ -9,50 +11,23 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-
     const { estado } = body;
 
-    if (!estado || typeof estado !== 'string' || estado.trim() === '') {
+    if (!estado || !ESTADOS_VALIDOS.includes(estado)) {
       return NextResponse.json(
-        { success: false, error: 'El estado es requerido' },
+        { ok: false, error: `Estado inválido. Valores permitidos: ${ESTADOS_VALIDOS.join(', ')}` },
         { status: 400 }
       );
     }
 
-    const validEstados = ['pendiente', 'en_proceso', 'entregado', 'cancelado'];
-    if (!validEstados.includes(estado.trim())) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Estado no válido. Estados permitidos: ${validEstados.join(', ')}`,
-        },
-        { status: 400 }
-      );
-    }
-
-    const existing = await pool.query('SELECT * FROM pedidos WHERE id = $1', [id]);
-    if (existing.rows.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Pedido no encontrado' },
-        { status: 404 }
-      );
-    }
-
-    const result = await pool.query(
-      'UPDATE pedidos SET estado = $1 WHERE id = $2 RETURNING *',
-      [estado.trim(), id]
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: result.rows[0],
-      message: 'Estado actualizado exitosamente',
+    const pedido = await db.pedido.update({
+      where: { id: parseInt(id, 10) },
+      data: { estado },
     });
+
+    return NextResponse.json({ ok: true, data: pedido });
   } catch (error) {
     console.error('Error updating estado:', error);
-    return NextResponse.json(
-      { success: false, error: 'Error al actualizar el estado' },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: 'Error al actualizar estado' }, { status: 500 });
   }
 }

@@ -1,141 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/pg';
+import { db } from '@/lib/db';
+import { z } from 'zod';
 
-// GET /api/pedidos - List all pedidos with filtering, search, and pagination
+const pedidoSchema = z.object({
+  nombreComprador: z.string().min(2, 'El nombre del comprador es requerido'),
+  emailComprador: z.string().email('Email inválido').optional().or(z.literal('')),
+  telefonoComprador: z.string().min(7, 'El teléfono del comprador es requerido'),
+  nombreDestinatario: z.string().min(2, 'El nombre del destinatario es requerido'),
+  telefonoDestinatario: z.string().min(7, 'El teléfono del destinatario es requerido'),
+  carnetDestinatario: z.string().optional().or(z.literal('')),
+  direccionDestinatario: z.string().min(5, 'La dirección es requerida'),
+  producto: z.string().min(2, 'El producto es requerido'),
+  notas: z.string().optional().or(z.literal('')),
+});
+
+// GET /api/pedidos - List pedidos with pagination, filter, search
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado') || '';
     const search = searchParams.get('search') || '';
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10', 10)));
-    const offset = (page - 1) * limit;
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
 
-    let whereClause = 'WHERE 1=1';
-    const params: (string | number)[] = [];
-    let paramIndex = 1;
+    const where: Record<string, unknown> = {};
 
     if (estado) {
-      whereClause += ` AND estado = $${paramIndex}`;
-      params.push(estado);
-      paramIndex++;
+      where.estado = estado;
     }
 
     if (search) {
-      whereClause += ` AND (nombre_comprador ILIKE $${paramIndex} OR nombre_destinatario ILIKE $${paramIndex} OR producto ILIKE $${paramIndex})`;
-      params.push(`%${search}%`);
-      paramIndex++;
+      where.OR = [
+        { nombreComprador: { contains: search } },
+        { nombreDestinatario: { contains: search } },
+        { producto: { contains: search } },
+        { emailComprador: { contains: search } },
+        { telefonoComprador: { contains: search } },
+      ];
     }
 
-    // Get total count
-    const countResult = await pool.query(
-      `SELECT COUNT(*) as total FROM pedidos ${whereClause}`,
-      params
-    );
-    const total = parseInt(countResult.rows[0].total, 10);
-
-    // Get paginated data
-    const dataResult = await pool.query(
-      `SELECT * FROM pedidos ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      [...params, limit, offset]
-    );
+    const [pedidos, total] = await Promise.all([
+      db.pedido.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      db.pedido.count({ where }),
+    ]);
 
     return NextResponse.json({
-      success: true,
-      data: dataResult.rows,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
+      ok: true,
+      data: pedidos,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error('Error fetching pedidos:', error);
-    return NextResponse.json(
-      { success: false, error: 'Error al obtener los pedidos' },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: 'Error al obtener pedidos' }, { status: 500 });
   }
 }
 
-// POST /api/pedidos - Create a new pedido
+// POST /api/pedidos - Create new pedido
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const validated = pedidoSchema.safeParse(body);
 
-    const {
-      nombre_comprador,
-      email_comprador,
-      telefono_comprador,
-      nombre_destinatario,
-      telefono_destinatario,
-      carnet_destinatario,
-      direccion_destinatario,
-      producto,
-      notas,
-      estado,
-    } = body;
-
-    // Validate required fields
-    const requiredFields = [
-      'nombre_comprador',
-      'telefono_comprador',
-      'nombre_destinatario',
-      'telefono_destinatario',
-      'direccion_destinatario',
-      'producto',
-    ];
-
-    const missingFields = requiredFields.filter((field) => !body[field] || String(body[field]).trim() === '');
-    if (missingFields.length > 0) {
+    if (!validated.success) {
       return NextResponse.json(
-        {
-          success: false,
-          error: `Campos requeridos faltantes: ${missingFields.join(', ')}`,
-        },
+        { ok: false, error: validated.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
-    // Validate email format if provided
-    if (email_comprador && email_comprador.trim() !== '') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email_comprador)) {
-        return NextResponse.json(
-          { success: false, error: 'El formato del email no es válido' },
-          { status: 400 }
-        );
-      }
-    }
-
-    const result = await pool.query(
-      `INSERT INTO pedidos (nombre_comprador, email_comprador, telefono_comprador, nombre_destinatario, telefono_destinatario, carnet_destinatario, direccion_destinatario, producto, notas, estado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [
-        nombre_comprador.trim(),
-        email_comprador?.trim() || null,
-        telefono_comprador.trim(),
-        nombre_destinatario.trim(),
-        telefono_destinatario.trim(),
-        carnet_destinatario?.trim() || null,
-        direccion_destinatario.trim(),
-        producto.trim(),
-        notas?.trim() || null,
-        estado || 'pendiente',
-      ]
-    );
-
-    return NextResponse.json(
-      {
-        success: true,
-        data: result.rows[0],
-        message: 'Pedido creado exitosamente',
+    const data = validated.data;
+    const pedido = await db.pedido.create({
+      data: {
+        nombreComprador: data.nombreComprador,
+        emailComprador: data.emailComprador || null,
+        telefonoComprador: data.telefonoComprador,
+        nombreDestinatario: data.nombreDestinatario,
+        telefonoDestinatario: data.telefonoDestinatario,
+        carnetDestinatario: data.carnetDestinatario || null,
+        direccionDestinatario: data.direccionDestinatario,
+        producto: data.producto,
+        notas: data.notas || null,
       },
-      { status: 201 }
-    );
+    });
+
+    return NextResponse.json({ ok: true, data: pedido }, { status: 201 });
   } catch (error) {
     console.error('Error creating pedido:', error);
-    return NextResponse.json(
-      { success: false, error: 'Error al crear el pedido' },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: 'Error al crear pedido' }, { status: 500 });
   }
 }

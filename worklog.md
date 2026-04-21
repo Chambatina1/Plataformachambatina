@@ -42,3 +42,35 @@ Built a complete Order Management System (Sistema de Gestión de Pedidos) as a s
 
 ## Issues Encountered
 - The external PostgreSQL database connection (`ECONNREFUSED`) is not reachable from the sandbox environment. This is a network restriction, not a code issue. The application code is fully functional and will work when deployed to an environment with access to the database.
+
+---
+Task ID: 2
+Agent: full-stack-developer
+Task: Build complete Chambatina ecosystem
+
+Work Log:
+- Read existing project files (schema.prisma, db.ts, package.json, layout.tsx, page.tsx, globals.css, worklog.md)
+- Initialized fullstack dev environment
+- Updated Prisma schema with Pedido, TrackingEntry, ChatMessage models (SQLite)
+- Pushed schema to SQLite database with `bun run db:push`
+- Updated .env to use dev.db
+- Created `/src/lib/chambatina.ts` with all business logic: pricing calculator, bicycle/box pricing, tracking stages, TSV parser, intent detection, AI chat context
+- Created 7 API routes: pedidos (CRUD), pedidos/[id]/estado (PATCH), tracking (GET/POST), tracking/buscar (GET), chat (POST with AI), stats (GET), tienda (GET)
+- Created Zustand store at `/src/components/chambatina/store.ts` for SPA navigation state
+- Built 8 UI components: navbar, home (hero+calculator), tienda (tabbed store), pedidos-list (paginated table), pedido-form (create/edit), pedido-detail (view+status workflow), rastreador (tracking+timeline+admin TSV upload), chat-ia (AI chat with quick questions)
+- Updated `page.tsx` as SPA router with AnimatePresence view switching
+- Updated `layout.tsx` with Chambatina metadata
+- Updated `globals.css` with amber/orange color scheme for Chambatina branding
+- Seeded database with 5 sample pedidos and 3 tracking entries
+- Cleaned up all unused imports
+- ESLint passes with zero errors
+
+Stage Summary:
+- Complete Chambatina ecosystem built as a single-page Next.js 16 application
+- 5 main sections: Home, Tienda, Pedidos, Rastreador, Chat IA
+- Full CRUD for orders with search, filter, pagination, status workflow
+- Package tracking with TSV data parsing, timeline visualization, CPK/carnet search
+- AI chat assistant with intent detection, local price calculations, and z-ai-web-dev-sdk integration
+- SQLite database with Prisma ORM, seeded with sample data
+- Amber/orange branding throughout, responsive design, mobile bottom tab bar
+- All UI text in Spanish, zero lint errors

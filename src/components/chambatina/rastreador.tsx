@@ -1,0 +1,335 @@
+'use client';
+
+import { useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { useAppStore } from './store';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  Search,
+  Package,
+  ChevronDown,
+  ChevronUp,
+  Upload,
+  Loader2,
+  FileText,
+  Calendar,
+  Truck,
+  Building,
+  CircleDot,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
+import { ETAPAS } from '@/lib/chambatina';
+import { toast } from 'sonner';
+
+interface TrackingResult {
+  id: number;
+  cpk: string;
+  fecha: string | null;
+  estado: string;
+  descripcion: string | null;
+  embarcador: string | null;
+  consignatario: string | null;
+  carnetPrincipal: string | null;
+  rawData: string | null;
+  estadoCalculado: string;
+  etapaInfo: {
+    estado: string;
+    descripcion: string;
+    color: string;
+    diasMin: number;
+    diasMax: number;
+  };
+}
+
+export function Rastreador() {
+  const [searchInput, setSearchInput] = useState('');
+  const [results, setResults] = useState<TrackingResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [tsvData, setTsvData] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  const handleSearch = useCallback(async () => {
+    if (!searchInput.trim()) return;
+    setLoading(true);
+    setSearched(true);
+    try {
+      const isCPK = /CPK/i.test(searchInput);
+      const params = new URLSearchParams({
+        [isCPK ? 'cpk' : 'carnet']: searchInput.trim(),
+      });
+      const res = await fetch(`/api/tracking/buscar?${params}`);
+      const json = await res.json();
+      if (json.ok) {
+        setResults(json.data);
+      } else {
+        toast.error(json.error || 'Error en la búsqueda');
+        setResults([]);
+      }
+    } catch {
+      toast.error('Error de conexión');
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchInput]);
+
+  const handleUploadTSV = async () => {
+    if (!tsvData.trim()) return;
+    setUploading(true);
+    try {
+      const res = await fetch('/api/tracking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bloque: tsvData }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        toast.success(`${json.count} entrada(s) procesada(s)`);
+        setTsvData('');
+      } else {
+        toast.error(json.error || 'Error al procesar');
+      }
+    } catch {
+      toast.error('Error de conexión');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const getStageForEstado = (estado: string) => {
+    const index = ETAPAS.findIndex(e => e.estado === estado);
+    return index >= 0 ? index : 0;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+    >
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Rastreador de Paquetes</h1>
+        <p className="text-zinc-500 mt-1">Busca tu paquete por número CPK o carnet de identidad</p>
+      </div>
+
+      {/* Search */}
+      <Card className="border-0 shadow-md mb-6">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <Input
+                placeholder="CPK-0266228 o número de carnet..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-10"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
+            <Button
+              onClick={handleSearch}
+              disabled={loading}
+              className="bg-amber-500 hover:bg-amber-600 text-white px-6"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+              Buscar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Results */}
+      {loading && (
+        <div className="space-y-4 mb-6">
+          <Skeleton className="h-48 w-full rounded-xl" />
+        </div>
+      )}
+
+      {!loading && searched && results.length === 0 && (
+        <Card className="border-0 shadow-md mb-6">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-zinc-300 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-zinc-700 mb-1">Sin resultados</h3>
+            <p className="text-sm text-zinc-400">
+              No se encontraron paquetes con ese CPK o carnet. Verifica el número e intenta de nuevo.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && results.length > 0 && (
+        <div className="space-y-4 mb-6">
+          {results.map((result) => {
+            const currentStage = getStageForEstado(result.etapaInfo?.estado || result.estado);
+            return (
+              <Card key={result.id} className="border-0 shadow-md overflow-hidden">
+                <CardHeader className="pb-3 bg-gradient-to-r from-amber-50 to-orange-50">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Package className="h-5 w-5 text-amber-600" />
+                        {result.cpk}
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-1">
+                        {result.consignatario && `Destinatario: ${result.consignatario}`}
+                      </CardDescription>
+                    </div>
+                    <Badge className="text-sm font-medium px-3 py-1" style={{ backgroundColor: result.etapaInfo?.color || '#f59e0b', color: 'white' }}>
+                      {result.etapaInfo?.estado || result.estado}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6">
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                    {result.fecha && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-zinc-400 shrink-0" />
+                        <div>
+                          <p className="text-xs text-zinc-400">Fecha</p>
+                          <p className="font-medium">{result.fecha}</p>
+                        </div>
+                      </div>
+                    )}
+                    {result.embarcador && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Building className="h-4 w-4 text-zinc-400 shrink-0" />
+                        <div>
+                          <p className="text-xs text-zinc-400">Embarcador</p>
+                          <p className="font-medium text-xs">{result.embarcador}</p>
+                        </div>
+                      </div>
+                    )}
+                    {result.carnetPrincipal && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <FileText className="h-4 w-4 text-zinc-400 shrink-0" />
+                        <div>
+                          <p className="text-xs text-zinc-400">Carnet</p>
+                          <p className="font-mono text-xs">{result.carnetPrincipal}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {result.descripcion && (
+                    <div className="bg-zinc-50 rounded-lg p-3 mb-6">
+                      <p className="text-sm text-zinc-600">
+                        <span className="font-medium text-zinc-800">Descripción:</span> {result.descripcion}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Timeline */}
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-700 mb-3">Estado del envío</p>
+                    <div className="space-y-0">
+                      {ETAPAS.map((etapa, idx) => {
+                        const isCompleted = idx < currentStage;
+                        const isCurrent = idx === currentStage;
+                        return (
+                          <div key={etapa.estado} className="flex gap-3">
+                            {/* Line & dot */}
+                            <div className="flex flex-col items-center">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                                  isCompleted
+                                    ? 'bg-emerald-100'
+                                    : isCurrent
+                                    ? 'bg-amber-100 ring-2 ring-amber-400'
+                                    : 'bg-zinc-100'
+                                }`}
+                              >
+                                {isCompleted ? (
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                ) : isCurrent ? (
+                                  <Truck className="h-4 w-4 text-amber-600" />
+                                ) : (
+                                  <CircleDot className="h-4 w-4 text-zinc-300" />
+                                )}
+                              </div>
+                              {idx < ETAPAS.length - 1 && (
+                                <div className={`w-0.5 h-8 ${isCompleted ? 'bg-emerald-200' : 'bg-zinc-200'}`} />
+                              )}
+                            </div>
+                            {/* Content */}
+                            <div className="pb-6">
+                              <p className={`text-sm font-medium ${isCurrent ? 'text-amber-700' : isCompleted ? 'text-emerald-700' : 'text-zinc-400'}`}>
+                                {etapa.estado}
+                              </p>
+                              <p className={`text-xs mt-0.5 ${isCurrent ? 'text-amber-600' : 'text-zinc-400'}`}>
+                                {etapa.descripcion}
+                              </p>
+                              <p className="text-[10px] text-zinc-300 mt-0.5">
+                                Días {etapa.diasMin}-{etapa.diasMax < 999 ? etapa.diasMax : '+'}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Admin Section */}
+      <Collapsible open={adminOpen} onOpenChange={setAdminOpen}>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className="w-full justify-between text-zinc-500 hover:text-zinc-700 mb-3"
+          >
+            <span className="text-sm font-medium">⚙️ Panel de Administración</span>
+            {adminOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <Card className="border-0 shadow-md">
+            <CardHeader>
+              <CardTitle className="text-base">Actualizar Datos de Rastreo</CardTitle>
+              <CardDescription>
+                Pega los datos TSV del rastreo para actualizar la base de datos
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Pega aquí los datos TSV con las columnas del rastreo..."
+                value={tsvData}
+                onChange={(e) => setTsvData(e.target.value)}
+                rows={6}
+                className="font-mono text-xs"
+              />
+              <Button
+                onClick={handleUploadTSV}
+                disabled={uploading || !tsvData.trim()}
+                className="mt-3 bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                Actualizar Rastreo
+              </Button>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <div className="md:hidden h-20" />
+    </motion.div>
+  );
+}
