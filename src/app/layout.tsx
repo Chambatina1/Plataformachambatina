@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Chambatina - Envíos a Cuba y Sistemas Solares",
+  title: "Chambatina - Envíos Internacionales y Sistemas Solares",
   description:
-    "Chambatina: Tu puente confiable entre Estados Unidos y Cuba. Envíos de paquetes, bicicletas, electrodomésticos y soluciones de energía solar.",
+    "Chambatina: Tu empresa de logística confiable. Envíos de paquetes, bicicletas, electrodomésticos y soluciones de energía solar."
   icons: {
     icon: "/logo.png",
   },

@@ -77,8 +77,8 @@ export interface EtapaTracking {
 
 export const ETAPAS: EtapaTracking[] = [
   { estado: 'EN AGENCIA', diasMin: 0, diasMax: 3, descripcion: 'El paquete está en nuestra agencia siendo procesado', color: '#f59e0b' },
-  { estado: 'EN TRANSITO HACIA CUBA', diasMin: 3, diasMax: 7, descripcion: 'El paquete está en camino hacia Cuba', color: '#3b82f6' },
-  { estado: 'EN ADUANA CUBA', diasMin: 7, diasMax: 14, descripcion: 'El paquete está siendo procesado por la aduana cubana', color: '#8b5cf6' },
+  { estado: 'EN TRANSITO', diasMin: 3, diasMax: 7, descripcion: 'El paquete está en camino hacia su destino', color: '#3b82f6' },
+  { estado: 'EN ADUANA', diasMin: 7, diasMax: 14, descripcion: 'El paquete está siendo procesado por aduana', color: '#8b5cf6' },
   { estado: 'EN DISTRIBUCION', diasMin: 14, diasMax: 21, descripcion: 'El paquete está en distribución hacia su destino final', color: '#06b6d4' },
   { estado: 'ENTREGADO', diasMin: 21, diasMax: 999, descripcion: 'El paquete fue entregado exitosamente', color: '#22c55e' },
 ];
@@ -319,13 +319,13 @@ export function detectarIntencion(mensaje: string): DetectedIntent {
 
 // ---- Business Context for AI Chat ----
 
-export const BUSINESS_CONTEXT = `Eres un asistente virtual de Chambatina, una empresa de logística especializada en envíos a Cuba y sistemas de energía solar.
+export const BUSINESS_CONTEXT = `Eres un asistente virtual de Chambatina, una empresa de logística especializada en envíos internacionales y sistemas de energía solar.
 
 INFORMACIÓN DE LA EMPRESA:
 - Nombre: Chambatina
 - Oficina: 7523 Aloma Ave, Winter Park, FL 32792, Suite 112
 - Teléfonos: 786-942-6904 (Geo), 786-784-6421 (Adriana)
-- Servicios: Envíos a Cuba, Sistemas Solares, Rastreo de Paquetes (CPK)
+- Servicios: Envíos Internacionales, Sistemas Solares, Rastreo de Paquetes (CPK)
 
 PRECIOS DE ENVÍO:
 - Precio por libra (equipo): $1.99

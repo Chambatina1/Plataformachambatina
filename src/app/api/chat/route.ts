@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     switch (intent.intent) {
       case 'saludo':
-        respuesta = '¡Hola! 👋 Soy el asistente virtual de **Chambatina**. ¿En qué puedo ayudarte?\n\nPuedes preguntarme sobre:\n- 📦 Precios de envío a Cuba\n- 🚲 Precios de bicicletas\n- 📋 Rastreo de paquetes (CPK)\n- ☀️ Sistemas solares\n- 📍 Información de contacto';
+        respuesta = '¡Hola! 👋 Soy el asistente virtual de **Chambatina**. ¿En qué puedo ayudarte?\n\nPuedes preguntarme sobre:\n- 📦 Precios de envío\n- 🚲 Precios de bicicletas\n- 📋 Rastreo de paquetes (CPK)\n- ☀️ Sistemas solares\n- 📍 Información de contacto';
         break;
 
       case 'precio_peso': {

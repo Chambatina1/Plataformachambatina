@@ -54,7 +54,7 @@ export function Navbar() {
               <div>
                 <h1 className="text-lg font-bold text-white tracking-wide">CHAMBATINA</h1>
                 <p className="text-[10px] text-amber-400 font-medium tracking-widest uppercase -mt-0.5">
-                  Envíos a Cuba
+                  Envíos Internacionales
                 </p>
               </div>
             </button>
@@ -99,7 +99,7 @@ export function Navbar() {
                       <div>
                         <h2 className="text-lg font-bold text-white">CHAMBATINA</h2>
                         <p className="text-[10px] text-amber-400 font-medium tracking-widest uppercase">
-                          Envíos a Cuba
+                          Envíos Internacionales
                         </p>
                       </div>
                     </div>

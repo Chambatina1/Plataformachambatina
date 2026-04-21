@@ -6,8 +6,8 @@ export async function GET() {
   try {
     const productos = {
       envios: {
-        nombre: 'Envíos a Cuba',
-        descripcion: 'Servicio de envío de paquetes a Cuba con diferentes opciones',
+        nombre: 'Envíos Internacionales',
+        descripcion: 'Servicio de envío de paquetes con diferentes opciones',
         items: [
           {
             id: 'equipo',
@@ -40,7 +40,7 @@ export async function GET() {
       },
       bicicletas: {
         nombre: 'Bicicletas',
-        descripcion: 'Envío de bicicletas a Cuba',
+        descripcion: 'Envío de bicicletas internacional',
         items: BICICLETAS.map((b, i) => ({
           id: b.tipo,
           nombre: b.descripcion,
@@ -69,7 +69,7 @@ export async function GET() {
           {
             id: 'solar_consultoria',
             nombre: 'Consultoría Solar',
-            descripcion: 'Orientación personalizada sobre sistemas de energía solar para Cuba',
+            descripcion: 'Orientación personalizada sobre sistemas de energía solar',
             precio: 0,
             unidad: 'gratuito',
             cargoAdicional: null,

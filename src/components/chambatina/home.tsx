@@ -63,10 +63,10 @@ export function Home() {
               CHAMBATINA
             </h1>
             <p className="text-lg sm:text-xl text-amber-400 font-medium tracking-wide mb-2">
-              Envíos a Cuba & Sistemas Solares
+              Envíos Internacionales & Sistemas Solares
             </p>
             <p className="text-zinc-400 max-w-2xl mx-auto text-sm sm:text-base mb-8">
-              Tu puente confiable entre Estados Unidos y Cuba. Enviamos paquetes, bicicletas, 
+              Tu empresa de logística confiable. Enviamos paquetes, bicicletas, 
               electrodomésticos y ofrecemos soluciones de energía solar.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -109,7 +109,7 @@ export function Home() {
                 <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mb-2">
                   <Truck className="h-6 w-6 text-amber-600" />
                 </div>
-                <CardTitle className="text-lg">Envíos a Cuba</CardTitle>
+                <CardTitle className="text-lg">Envíos Internacionales</CardTitle>
                 <CardDescription className="text-sm">
                   Desde $1.80/libra. Recogemos en tu casa o trae a nuestra oficina.
                 </CardDescription>
@@ -133,7 +133,7 @@ export function Home() {
                 </div>
                 <CardTitle className="text-lg">Sistemas Solares</CardTitle>
                 <CardDescription className="text-sm">
-                  Asesoría y productos EcoFlow para energía solar en Cuba.
+                  Asesoría y productos EcoFlow para energía solar.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
