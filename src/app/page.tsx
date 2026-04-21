@@ -11,6 +11,7 @@ import { PedidoForm } from '@/components/chambatina/pedido-form';
 import { PedidoDetail } from '@/components/chambatina/pedido-detail';
 import { AdminDashboard } from '@/components/chambatina/admin-dashboard';
 import { TrackingUpload } from '@/components/chambatina/tracking-upload';
+import { ConfigPanel } from '@/components/chambatina/config-panel';
 import { Rastreador } from '@/components/chambatina/rastreador';
 import { ChatIA } from '@/components/chambatina/chat-ia';
 
@@ -49,6 +50,8 @@ export default function Page() {
           return <PedidoForm />;
         case 'tracking':
           return <TrackingUpload />;
+        case 'config':
+          return <ConfigPanel />;
         default:
           return <AdminDashboard />;
       }

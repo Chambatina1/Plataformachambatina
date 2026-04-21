@@ -57,17 +57,50 @@ export async function POST(request: NextRequest) {
         respuesta = `📋 **Rastreo de Paquetes:**\n\nPuedes rastrear tu paquete usando:\n- **Número CPK** (ejemplo: CPK-0266228)\n- **Carnet de identidad** del destinatario\n\nUsa el **Rastreador** en el menú principal para buscar. ¿Tienes tu número CPK o carnet?`;
         break;
 
-      case 'contacto':
-        respuesta = `📍 **Información de Contacto:**\n\n🏢 **Oficina:** 7523 Aloma Ave, Winter Park, FL 32792, Suite 112\n\n📞 **Teléfonos:**\n- Geo: **786-942-6904**\n- Adriana: **786-784-6421**\n\n⏰ Te recomendamos llamar para confirmar horarios de atención.`;
+      case 'contacto': {
+        // Read dynamic config
+        let direccion = '7523 Aloma Ave, Winter Park, FL 32792, Suite 112';
+        let telefonos = 'Geo: **786-942-6904**\n- Adriana: **786-784-6421**';
+        try {
+          const cfgRes = await fetch('http://localhost:3000/api/config?keys=direccion,telefono1,nombre_contacto1,telefono2,nombre_contacto2,telefono3,nombre_contacto3,horario,email,whatsapp');
+          const cfg = await cfgRes.json();
+          if (cfg.ok) {
+            const d = cfg.data;
+            direccion = d.direccion || direccion;
+            const lines: string[] = [];
+            if (d.telefono1) lines.push(`${d.nombre_contacto1 || 'Tel'}: **${d.telefono1}**`);
+            if (d.telefono2) lines.push(`${d.nombre_contacto2 || 'Tel'}: **${d.telefono2}**`);
+            if (d.telefono3) lines.push(`${d.nombre_contacto3 || 'Tel'}: **${d.telefono3}**`);
+            telefonos = lines.join('\n- ') || telefonos;
+            if (d.whatsapp) telefonos += `\n- WhatsApp: **${d.whatsapp}**`;
+            if (d.email) telefonos += `\n- Email: **${d.email}**`;
+            if (d.horario) telefonos += `\n\n⏰ **Horario:** ${d.horario}`;
+          }
+        } catch { /* use defaults */ }
+        respuesta = `📍 **Información de Contacto:**\n\n🏢 **Oficina:** ${direccion}\n\n📞 **Teléfonos:**\n- ${telefonos}`;
         break;
+      }
 
       case 'bicicletas':
         respuesta = `🚲 **Servicio de Envío de Bicicletas:**\n\n${BICICLETAS.map(b => `- **${b.descripcion}**: $${b.precio}`).join('\n')}\n\n¿Te interesa enviar una bicicleta?`;
         break;
 
-      case 'solar':
-        respuesta = `☀️ **Sistemas de Energía Solar:**\n\nChambatina ofrece orientación y productos de energía solar, incluyendo sistemas **EcoFlow**.\n\nPara más información sobre productos y precios, te recomendamos contactar directamente a la oficina:\n📞 **786-942-6904** (Geo)\n📞 **786-784-6421** (Adriana)`;
+      case 'solar': {
+        let solarPhones = '📞 **786-942-6904** (Geo)\n📞 **786-784-6421** (Adriana)';
+        try {
+          const cfgRes = await fetch('http://localhost:3000/api/config?keys=telefono1,nombre_contacto1,telefono2,nombre_contacto2');
+          const cfg = await cfgRes.json();
+          if (cfg.ok) {
+            const d = cfg.data;
+            const lines: string[] = [];
+            if (d.telefono1) lines.push(`📞 **${d.telefono1}** (${d.nombre_contacto1 || 'Contacto'})`);
+            if (d.telefono2) lines.push(`📞 **${d.telefono2}** (${d.nombre_contacto2 || 'Contacto'})`);
+            solarPhones = lines.join('\n');
+          }
+        } catch { /* use defaults */ }
+        respuesta = `☀️ **Sistemas de Energía Solar:**\n\nChambatina ofrece orientación y productos de energía solar, incluyendo sistemas **EcoFlow**.\n\nPara más información sobre productos y precios, te recomendamos contactar directamente a la oficina:\n${solarPhones}`;
         break;
+      }
 
       default: {
         // For general chat, use AI

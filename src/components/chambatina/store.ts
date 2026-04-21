@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type PublicView = 'home' | 'tienda' | 'rastreador' | 'chat';
-export type AdminView = 'dashboard' | 'pedidos' | 'tracking' | 'pedido-detail' | 'pedido-form' | 'pedido-edit';
+export type AdminView = 'dashboard' | 'pedidos' | 'tracking' | 'config' | 'pedido-detail' | 'pedido-form' | 'pedido-edit';
 export type AppMode = 'public' | 'admin';
 
 interface AppState {

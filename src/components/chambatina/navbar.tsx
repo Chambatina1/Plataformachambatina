@@ -18,6 +18,7 @@ import {
   BarChart3,
   ClipboardList,
   Database,
+  Settings,
 } from 'lucide-react';
 
 // ---- PUBLIC NAV ----
@@ -190,6 +191,7 @@ const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3 }[
   { view: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { view: 'pedidos', label: 'Pedidos', icon: ClipboardList },
   { view: 'tracking', label: 'Tracking', icon: Database },
+  { view: 'config', label: 'Config', icon: Settings },
 ];
 
 function AdminNavbar() {

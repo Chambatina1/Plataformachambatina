@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useAppStore } from './store';
@@ -35,6 +35,38 @@ export function Home() {
   const { setCurrentView, goToNuevoPedido } = useAppStore();
   const [calcPeso, setCalcPeso] = useState('');
   const [calcTipo, setCalcTipo] = useState<EnvioTipo>('equipo');
+  const [config, setConfig] = useState({
+    nombre_negocio: 'Chambatina',
+    direccion: '7523 Aloma Ave, Winter Park, FL 32792, Suite 112',
+    telefono1: '786-942-6904',
+    nombre_contacto1: 'Geo',
+    telefono2: '786-784-6421',
+    nombre_contacto2: 'Adriana',
+    telefono3: '',
+    nombre_contacto3: '',
+    email: '',
+    horario: '',
+    whatsapp: '',
+    instagram: '',
+    facebook: '',
+  });
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/config');
+        const json = await res.json();
+        if (json.ok) setConfig((prev) => ({ ...prev, ...json.data }));
+      } catch { /* use defaults */ }
+    }
+    load();
+
+    function onConfigUpdated() {
+      load();
+    }
+    window.addEventListener('config-updated', onConfigUpdated);
+    return () => window.removeEventListener('config-updated', onConfigUpdated);
+  }, []);
 
   const calcResult = useMemo(() => {
     const peso = parseFloat(calcPeso);
@@ -284,7 +316,8 @@ export function Home() {
                   <MapPin className="h-5 w-5 text-zinc-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium text-sm">Oficina</p>
-                    <p className="text-sm text-zinc-500">7523 Aloma Ave, Winter Park, FL 32792, Suite 112</p>
+                    <p className="text-sm text-zinc-500">{config.direccion}</p>
+                    {config.horario && <p className="text-sm text-zinc-500 mt-1">{config.horario}</p>}
                   </div>
                 </div>
               </div>
@@ -293,8 +326,34 @@ export function Home() {
                   <Phone className="h-5 w-5 text-zinc-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium text-sm">Teléfonos</p>
-                    <p className="text-sm text-zinc-500">Geo: <a href="tel:7869426904" className="text-amber-600 hover:underline">786-942-6904</a></p>
-                    <p className="text-sm text-zinc-500">Adriana: <a href="tel:7867846421" className="text-amber-600 hover:underline">786-784-6421</a></p>
+                    {config.telefono1 && (
+                      <p className="text-sm text-zinc-500">
+                        {config.nombre_contacto1 ? `${config.nombre_contacto1}: ` : ''}
+                        <a href={`tel:${config.telefono1.replace(/\D/g, '')}`} className="text-amber-600 hover:underline">{config.telefono1}</a>
+                      </p>
+                    )}
+                    {config.telefono2 && (
+                      <p className="text-sm text-zinc-500">
+                        {config.nombre_contacto2 ? `${config.nombre_contacto2}: ` : ''}
+                        <a href={`tel:${config.telefono2.replace(/\D/g, '')}`} className="text-amber-600 hover:underline">{config.telefono2}</a>
+                      </p>
+                    )}
+                    {config.telefono3 && (
+                      <p className="text-sm text-zinc-500">
+                        {config.nombre_contacto3 ? `${config.nombre_contacto3}: ` : ''}
+                        <a href={`tel:${config.telefono3.replace(/\D/g, '')}`} className="text-amber-600 hover:underline">{config.telefono3}</a>
+                      </p>
+                    )}
+                    {config.whatsapp && (
+                      <p className="text-sm text-zinc-500 mt-1">
+                        WhatsApp: <a href={`https://wa.me/${config.whatsapp.replace(/[^\d]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">{config.whatsapp}</a>
+                      </p>
+                    )}
+                    {config.email && (
+                      <p className="text-sm text-zinc-500 mt-1">
+                        Email: <a href={`mailto:${config.email}`} className="text-amber-600 hover:underline">{config.email}</a>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
