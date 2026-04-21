@@ -75,3 +75,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Error al procesar datos de rastreo' }, { status: 500 });
   }
 }
+
+// DELETE /api/tracking - Clear all tracking entries
+export async function DELETE() {
+  try {
+    await db.trackingEntry.deleteMany({});
+    return NextResponse.json({ ok: true, message: 'Todos los datos de tracking eliminados' });
+  } catch (error) {
+    console.error('Error deleting tracking entries:', error);
+    return NextResponse.json({ ok: false, error: 'Error al eliminar datos de rastreo' }, { status: 500 });
+  }
+}

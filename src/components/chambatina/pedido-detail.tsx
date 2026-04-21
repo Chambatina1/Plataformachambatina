@@ -42,7 +42,7 @@ const getEstadoInfo = (estado: string) =>
   ESTADOS.find(e => e.value === estado) || ESTADOS[0];
 
 export function PedidoDetail() {
-  const { selectedPedidoId, setCurrentView, goToPedidoEdit } = useAppStore();
+  const { selectedPedidoId, setAdminView, goToPedidoEdit } = useAppStore();
   const [pedido, setPedido] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -91,7 +91,7 @@ export function PedidoDetail() {
       const json = await res.json();
       if (json.ok) {
         toast.success('Pedido eliminado');
-        setCurrentView('pedidos');
+        setAdminView('pedidos');
       }
     } catch {
       toast.error('Error al eliminar');
@@ -113,7 +113,7 @@ export function PedidoDetail() {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
         <p className="text-zinc-500">Pedido no encontrado</p>
-        <Button variant="outline" onClick={() => setCurrentView('pedidos')} className="mt-4">
+        <Button variant="outline" onClick={() => setAdminView('pedidos')} className="mt-4">
           Volver a Pedidos
         </Button>
       </div>
@@ -132,7 +132,7 @@ export function PedidoDetail() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setCurrentView('pedidos')}>
+          <Button variant="ghost" size="icon" onClick={() => setAdminView('pedidos')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { PwaRegister } from "@/components/chambatina/pwa-register";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -17,9 +18,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Chambatina - Envíos Internacionales y Sistemas Solares",
   description:
-    "Chambatina: Tu empresa de logística confiable. Envíos de paquetes, bicicletas, electrodomésticos y soluciones de energía solar."
+    "Chambatina: Tu empresa de logística confiable. Envíos de paquetes, bicicletas, electrodomésticos y soluciones de energía solar.",
   icons: {
     icon: "/logo.png",
+  },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Chambatina",
   },
 };
 
@@ -30,6 +37,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        <meta name="theme-color" content="#f59e0b" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Chambatina" />
+        <link rel="apple-touch-icon" href="/logo.png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
@@ -40,6 +54,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <PwaRegister />
           <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>

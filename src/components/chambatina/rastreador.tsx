@@ -2,20 +2,14 @@
 
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore } from './store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Search,
   Package,
-  ChevronDown,
-  ChevronUp,
-  Upload,
   Loader2,
   FileText,
   Calendar,
@@ -53,9 +47,6 @@ export function Rastreador() {
   const [results, setResults] = useState<TrackingResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [tsvData, setTsvData] = useState('');
-  const [uploading, setUploading] = useState(false);
 
   const handleSearch = useCallback(async () => {
     if (!searchInput.trim()) return;
@@ -82,28 +73,7 @@ export function Rastreador() {
     }
   }, [searchInput]);
 
-  const handleUploadTSV = async () => {
-    if (!tsvData.trim()) return;
-    setUploading(true);
-    try {
-      const res = await fetch('/api/tracking', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bloque: tsvData }),
-      });
-      const json = await res.json();
-      if (json.ok) {
-        toast.success(`${json.count} entrada(s) procesada(s)`);
-        setTsvData('');
-      } else {
-        toast.error(json.error || 'Error al procesar');
-      }
-    } catch {
-      toast.error('Error de conexión');
-    } finally {
-      setUploading(false);
-    }
-  };
+
 
   const getStageForEstado = (estado: string) => {
     const index = ETAPAS.findIndex(e => e.estado === estado);
@@ -284,50 +254,6 @@ export function Rastreador() {
           })}
         </div>
       )}
-
-      {/* Admin Section */}
-      <Collapsible open={adminOpen} onOpenChange={setAdminOpen}>
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className="w-full justify-between text-zinc-500 hover:text-zinc-700 mb-3"
-          >
-            <span className="text-sm font-medium">⚙️ Panel de Administración</span>
-            {adminOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <Card className="border-0 shadow-md">
-            <CardHeader>
-              <CardTitle className="text-base">Actualizar Datos de Rastreo</CardTitle>
-              <CardDescription>
-                Pega los datos TSV del rastreo para actualizar la base de datos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Pega aquí los datos TSV con las columnas del rastreo..."
-                value={tsvData}
-                onChange={(e) => setTsvData(e.target.value)}
-                rows={6}
-                className="font-mono text-xs"
-              />
-              <Button
-                onClick={handleUploadTSV}
-                disabled={uploading || !tsvData.trim()}
-                className="mt-3 bg-amber-500 hover:bg-amber-600 text-white"
-              >
-                {uploading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Upload className="h-4 w-4 mr-2" />
-                )}
-                Actualizar Rastreo
-              </Button>
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
 
       <div className="md:hidden h-20" />
     </motion.div>
