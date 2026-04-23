@@ -113,10 +113,41 @@ export async function POST(request: NextRequest) {
       data: { sessionId, role: 'user', content: mensaje },
     });
 
+    // ALWAYS search knowledge base first (before intent detection)
+    const knowledgeContext = await searchKnowledge(mensaje);
+    const hasStrongKnowledge = knowledgeContext.length > 50;
+
     // Detect intent
     const intent = detectarIntencion(mensaje);
     let respuesta = '';
 
+    // If knowledge base has strong match, use it directly (bypass intent)
+    if (hasStrongKnowledge && intent.intent === 'default') {
+      try {
+        const chatHistory = await db.chatMessage.findMany({
+          where: { sessionId },
+          orderBy: { createdAt: 'asc' },
+          take: 20,
+        });
+        const messages = chatHistory.map(m => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        }));
+        let systemPrompt = BUSINESS_CONTEXT;
+        systemPrompt += `\n\nCONOCIMIENTO ESPECÍFICO DE LA BASE DE DATOS:\n${knowledgeContext}\n\nUsa esta información para responder si es relevante. Si la información de la base de datos responde la pregunta, dale prioridad y responde directamente.`;
+        const zai = await ZAI.create();
+        const completion = await zai.chat.completions.create({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...messages,
+          ],
+        });
+        respuesta = completion.choices?.[0]?.message?.content || 'Lo siento, no pude generar una respuesta.';
+      } catch (aiError) {
+        console.error('AI Error:', aiError);
+        respuesta = knowledgeContext;
+      }
+    } else {
     switch (intent.intent) {
       case 'saludo':
         respuesta = '¡Hola! 👋 Soy el asistente virtual de **Chambatina**. Estoy aquí para ayudarte con lo que necesites.\n\nPuedo ayudarte con:\n- 📦 **Precios de envío** — Dime el peso y te calculo el costo\n- 🚲 **Envío de bicicletas** — Precios por tipo\n- 📋 **Rastreo de paquetes** — Busca por CPK o carnet\n- ☀️ **Sistemas solares** — Info sobre EcoFlow\n- 📍 **Información de contacto** — Dirección y teléfonos\n\n¿En qué te puedo ayudar?';
@@ -184,11 +215,8 @@ export async function POST(request: NextRequest) {
       }
 
       default: {
-        // For general chat, first search knowledge base, then use AI with context
+        // For general chat, use knowledge base + AI
         try {
-          // Search knowledge base first
-          const knowledgeContext = await searchKnowledge(mensaje);
-          
           const chatHistory = await db.chatMessage.findMany({
             where: { sessionId },
             orderBy: { createdAt: 'asc' },
@@ -200,7 +228,6 @@ export async function POST(request: NextRequest) {
             content: m.content,
           }));
 
-          // Enhanced system prompt with knowledge
           let systemPrompt = BUSINESS_CONTEXT;
           if (knowledgeContext) {
             systemPrompt += `\n\nCONOCIMIENTO ESPECÍFICO DE LA BASE DE DATOS:\n${knowledgeContext}\n\nUsa esta información para responder si es relevante a la pregunta del usuario. Si la información de la base de datos es relevante, dale prioridad.`;
@@ -222,6 +249,7 @@ export async function POST(request: NextRequest) {
         break;
       }
     }
+    } // end else block (knowledge bypass)
 
     // Save assistant response
     await db.chatMessage.create({

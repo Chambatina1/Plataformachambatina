@@ -129,18 +129,19 @@ export async function GET(request: NextRequest) {
         if (!seenIds.has(r.id)) { results.push(r); seenIds.add(r.id); }
       }
       
-      // Also search in Pedido.carnetDestinatario
-      const pedidos = await db.pedido.findMany({
-        where: {
-          OR: [
-            { carnetDestinatario: { contains: searchCarnet } },
-          ]
-        },
+      // Also search in Pedido.carnetDestinatario using digit-only comparison
+      const allPedidos = await db.pedido.findMany({
         orderBy: { createdAt: 'desc' },
       });
       
+      const carnetPedidos = allPedidos.filter(p => {
+        if (!p.carnetDestinatario) return false;
+        const pCarnet = p.carnetDestinatario.replace(/[^0-9]/g, '');
+        return pCarnet.includes(normalizedCarnet) || normalizedCarnet.includes(pCarnet);
+      });
+      
       // Add pedidos as tracking-style results
-      for (const p of pedidos) {
+      for (const p of carnetPedidos) {
         const alreadyExists = results.some(r => r.cpk === `PED-${p.id}`);
         if (!alreadyExists) {
           results.push({
