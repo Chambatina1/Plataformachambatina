@@ -79,11 +79,19 @@ export function Home() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-white via-orange-50/30 to-white overflow-hidden">
+      <section className="relative bg-white overflow-hidden">
+        {/* VW Combi background - subtle and nice */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-[0.06] pointer-events-none select-none">
+          <img
+            src="/background-combi.png"
+            alt=""
+            className="w-full max-w-2xl object-contain"
+            style={{ filter: 'grayscale(30%)' }}
+          />
+        </div>
         <div className="absolute inset-0 opacity-[0.03]">
           <div className="absolute top-10 left-10 w-72 h-72 bg-orange-400 rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-amber-400 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-orange-300 rounded-full blur-3xl" />
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
           <motion.div
