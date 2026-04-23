@@ -56,14 +56,19 @@ async function searchKnowledge(query: string): Promise<string> {
     // Score each entry
     const scored = entries.map(entry => {
       const preguntaLower = entry.pregunta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const respuestaLower = entry.respuesta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const keywordsLower = entry.keywords.map(k => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
       
       let score = 0;
       
       // Check keywords match
       for (const kw of keywordsLower) {
-        if (queryWords.some(qw => qw === kw || qw.includes(kw) || kw.includes(qw))) {
-          score += 10;
+        if (kw && kw.length > 1) {
+          for (const qw of queryWords) {
+            if (qw === kw || qw.includes(kw) || kw.includes(qw)) {
+              score += 10;
+            }
+          }
         }
       }
       
@@ -72,13 +77,17 @@ async function searchKnowledge(query: string): Promise<string> {
         if (preguntaLower.includes(qw)) {
           score += 5;
         }
+        // Also check respuesta words
+        if (respuestaLower.includes(qw)) {
+          score += 2;
+        }
       }
       
       // Category bonus
       if (entry.prioridad > 0) score += entry.prioridad;
       
       return { entry, score };
-    }).filter(s => s.score > 5).sort((a, b) => b.score - a.score);
+    }).filter(s => s.score > 3).sort((a, b) => b.score - a.score);
 
     if (scored.length > 0) {
       const topEntries = scored.slice(0, 3);

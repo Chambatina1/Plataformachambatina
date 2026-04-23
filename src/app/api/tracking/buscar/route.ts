@@ -34,19 +34,25 @@ export async function GET(request: NextRequest) {
 
     if (q && !cpk && !carnet) {
       const trimmed = q.trim();
+      const digitsOnly = trimmed.replace(/[^0-9]/g, '');
       
       // Check if it contains CPK prefix
       if (/CPK/i.test(trimmed)) {
         searchCPK = trimmed;
       }
+      // Check if it looks like a carnet (11 digits = Cuban carnet, or 9-12 digits)
+      else if (/^\d{9,12}$/.test(digitsOnly)) {
+        searchCarnet = digitsOnly;
+      }
       // Check if it looks like a CPK number (digits only, 4-8 digits)
-      else if (/^\d{4,8}$/.test(trimmed)) {
+      else if (/^\d{1,8}$/.test(digitsOnly)) {
         // Could be partial CPK number - search by contains
         searchCPK = trimmed;
       }
-      // Check if it looks like a carnet (8-12 digits)
-      else if (/^\d{8,12}$/.test(trimmed)) {
-        searchCarnet = trimmed;
+      // Ambiguous: 8-9 digits - try BOTH CPK and carnet
+      else if (/^\d{8,9}$/.test(digitsOnly)) {
+        searchCPK = trimmed;
+        searchCarnet = digitsOnly;
       }
       // Otherwise, try CPK first (might have mixed format)
       else {
@@ -58,42 +64,56 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Se requiere un número de búsqueda' }, { status: 400 });
     }
 
-    let results;
+    let results: any[] = [];
+    const seenIds = new Set<number>();
 
+    // Search by CPK
     if (searchCPK) {
       const normalizedCPK = normalizarCPK(searchCPK);
       
       // First try exact match
-      results = await db.trackingEntry.findMany({
+      const cpkResults = await db.trackingEntry.findMany({
         where: { cpk: normalizedCPK },
         orderBy: { createdAt: 'desc' },
       });
+      for (const r of cpkResults) {
+        if (!seenIds.has(r.id)) { results.push(r); seenIds.add(r.id); }
+      }
 
       // If no exact match and searchCPK is just digits (partial), try contains search
       if (results.length === 0 && /^\d+$/.test(searchCPK.trim())) {
         const digits = searchCPK.trim();
         // Pad to 7 digits for searching
         const paddedDigits = digits.padStart(7, '0');
-        results = await db.trackingEntry.findMany({
+        const containsResults = await db.trackingEntry.findMany({
           where: {
             cpk: { contains: paddedDigits },
           },
           orderBy: { createdAt: 'desc' },
         });
+        for (const r of containsResults) {
+          if (!seenIds.has(r.id)) { results.push(r); seenIds.add(r.id); }
+        }
 
         // Also try with various CPK formats
         if (results.length === 0) {
           const allEntries = await db.trackingEntry.findMany({
             orderBy: { createdAt: 'desc' },
           });
-          results = allEntries.filter(e => {
+          const filtered = allEntries.filter(e => {
             const numOnly = e.cpk.replace(/[^0-9]/g, '');
             return numOnly.includes(digits) || paddedDigits.includes(numOnly) || numOnly.includes(paddedDigits);
           });
+          for (const r of filtered) {
+            if (!seenIds.has(r.id)) { results.push(r); seenIds.add(r.id); }
+          }
         }
       }
-    } else if (searchCarnet) {
-      const normalizedCarnet = searchCarnet.replace(/\s/g, '');
+    }
+
+    // Search by carnet
+    if (searchCarnet) {
+      const normalizedCarnet = searchCarnet.replace(/[^0-9]/g, '');
       
       // Search in TrackingEntry.carnetPrincipal
       const trackingResults = await db.trackingEntry.findMany({
@@ -102,8 +122,12 @@ export async function GET(request: NextRequest) {
       
       const carnetTracking = trackingResults.filter(e => {
         if (!e.carnetPrincipal) return false;
-        return e.carnetPrincipal.replace(/\s/g, '').includes(normalizedCarnet) || normalizedCarnet.includes(e.carnetPrincipal.replace(/\s/g, ''));
+        const eCarnet = e.carnetPrincipal.replace(/[^0-9]/g, '');
+        return eCarnet.includes(normalizedCarnet) || normalizedCarnet.includes(eCarnet);
       });
+      for (const r of carnetTracking) {
+        if (!seenIds.has(r.id)) { results.push(r); seenIds.add(r.id); }
+      }
       
       // Also search in Pedido.carnetDestinatario
       const pedidos = await db.pedido.findMany({
@@ -115,12 +139,9 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
       });
       
-      // Merge results - tracking entries as primary
-      results = carnetTracking;
-      
       // Add pedidos as tracking-style results
       for (const p of pedidos) {
-        const alreadyExists = carnetTracking.some(t => t.carnetPrincipal === p.carnetDestinatario);
+        const alreadyExists = results.some(r => r.cpk === `PED-${p.id}`);
         if (!alreadyExists) {
           results.push({
             id: p.id,

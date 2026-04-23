@@ -47,7 +47,7 @@ function PublicNavbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-gradient-to-r from-orange-700 via-orange-600 to-amber-600 shadow-lg">
+      <header className="sticky top-0 z-50 bg-white border-b border-zinc-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -55,12 +55,12 @@ function PublicNavbar() {
               onClick={() => handleNav('home')}
               className="flex items-center gap-3 hover:opacity-90 transition-opacity"
             >
-              <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center overflow-hidden">
+              <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center overflow-hidden">
                 <Image src="/logo.png" alt="Chambatina" width={36} height={36} className="object-contain" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white tracking-wide">CHAMBATINA</h1>
-                <p className="text-[10px] text-amber-100 font-medium tracking-widest uppercase -mt-0.5">
+                <h1 className="text-lg font-bold text-zinc-900 tracking-wide">CHAMBATINA</h1>
+                <p className="text-[10px] text-orange-500 font-medium tracking-widest uppercase -mt-0.5">
                   Envíos Internacionales
                 </p>
               </div>
@@ -77,8 +77,8 @@ function PublicNavbar() {
                     onClick={() => handleNav(item.view)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       active
-                        ? 'bg-white/25 text-white'
-                        : 'text-white/70 hover:text-white hover:bg-white/10'
+                        ? 'bg-orange-50 text-orange-700'
+                        : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -91,13 +91,13 @@ function PublicNavbar() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowRegisterDialog(true)}
-                  className="ml-2 text-white/80 hover:text-white hover:bg-white/15"
+                  className="ml-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                 >
                   <UserPlus className="h-4 w-4 mr-1" />
                   Registrarse
                 </Button>
               ) : (
-                <span className="ml-2 text-sm text-white/70 hidden lg:inline">
+                <span className="ml-2 text-sm text-zinc-500 hidden lg:inline">
                   {currentUser.nombre}
                 </span>
               )}
@@ -105,7 +105,7 @@ function PublicNavbar() {
                 variant="ghost"
                 size="sm"
                 onClick={goToAdmin}
-                className="text-white/40 hover:text-white hover:bg-white/10"
+                className="text-zinc-300 hover:text-zinc-500 hover:bg-zinc-50"
               >
                 <Lock className="h-4 w-4" />
               </Button>
@@ -114,21 +114,21 @@ function PublicNavbar() {
             {/* Mobile Menu Button */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden text-white/70 hover:text-white">
+                <Button variant="ghost" size="icon" className="md:hidden text-zinc-500 hover:text-zinc-900">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-72 bg-gradient-to-b from-orange-700 to-orange-800 border-orange-600 p-0">
+              <SheetContent side="right" className="w-72 bg-white border-zinc-100 p-0">
                 <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
                 <div className="flex flex-col h-full">
-                  <div className="p-4 border-b border-white/10">
+                  <div className="p-4 border-b border-zinc-100">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center overflow-hidden">
+                      <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center overflow-hidden">
                         <Image src="/logo.png" alt="Chambatina" width={36} height={36} className="object-contain" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-bold text-white">CHAMBATINA</h2>
-                        <p className="text-[10px] text-amber-100 font-medium tracking-widest uppercase">
+                        <h2 className="text-lg font-bold text-zinc-900">CHAMBATINA</h2>
+                        <p className="text-[10px] text-orange-500 font-medium tracking-widest uppercase">
                           Envíos Internacionales
                         </p>
                       </div>
@@ -144,8 +144,8 @@ function PublicNavbar() {
                           onClick={() => handleNav(item.view)}
                           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                             active
-                              ? 'bg-white/25 text-white'
-                              : 'text-white/60 hover:text-white hover:bg-white/10'
+                              ? 'bg-orange-50 text-orange-700'
+                              : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
                           }`}
                         >
                           <Icon className="h-5 w-5" />
@@ -154,11 +154,11 @@ function PublicNavbar() {
                       );
                     })}
                   </nav>
-                  <div className="p-2 border-t border-white/10 space-y-1">
+                  <div className="p-2 border-t border-zinc-100 space-y-1">
                     {!currentUser && (
                       <button
                         onClick={() => { setShowRegisterDialog(true); setSheetOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-amber-200 hover:text-white hover:bg-white/10 transition-all duration-200"
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-orange-600 hover:bg-orange-50 transition-all duration-200"
                       >
                         <UserPlus className="h-5 w-5" />
                         Registrarse
@@ -166,11 +166,11 @@ function PublicNavbar() {
                     )}
                     <button
                       onClick={() => { goToAdmin(); setSheetOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-white/40 hover:text-white hover:bg-white/10 transition-all duration-200"
-                    >
-                      <Lock className="h-5 w-5" />
-                      Administración
-                    </button>
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-500 hover:bg-zinc-50 transition-all duration-200"
+                      >
+                        <Lock className="h-5 w-5" />
+                        Administración
+                      </button>
                   </div>
                 </div>
               </SheetContent>
@@ -180,7 +180,7 @@ function PublicNavbar() {
       </header>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-orange-700 via-orange-600 to-amber-600 border-t border-orange-500/30 safe-area-bottom">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-zinc-100 safe-area-bottom">
         <div className="flex items-center justify-around h-16 px-1">
           {publicNavItems.map((item) => {
             const Icon = item.icon;
@@ -191,8 +191,8 @@ function PublicNavbar() {
                 onClick={() => handleNav(item.view)}
                 className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-[10px] font-medium transition-all duration-200 min-w-[56px] ${
                   active
-                    ? 'text-white'
-                    : 'text-white/50 hover:text-white/80'
+                    ? 'text-orange-600'
+                    : 'text-zinc-400 hover:text-zinc-600'
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -202,7 +202,7 @@ function PublicNavbar() {
           })}
           <button
             onClick={goToAdmin}
-            className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-[10px] font-medium transition-all duration-200 min-w-[56px] text-white/30 hover:text-white"
+            className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-[10px] font-medium transition-all duration-200 min-w-[56px] text-zinc-300 hover:text-zinc-500"
           >
             <Lock className="h-5 w-5" />
             <span>Admin</span>

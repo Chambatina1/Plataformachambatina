@@ -81,6 +81,8 @@ export default function Page() {
           return <Rastreador />;
         case 'chat':
           return <ChatIA />;
+        case 'pedido-public':
+          return <PedidoForm />;
         case 'registro':
           return null; // Handled by dialog
         default:

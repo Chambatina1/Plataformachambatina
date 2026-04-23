@@ -38,8 +38,9 @@ const defaultData: PedidoData = {
 };
 
 export function PedidoForm() {
-  const { selectedPedidoId, setAdminView, adminView } = useAppStore();
-  const isEdit = adminView === 'pedido-edit';
+  const { selectedPedidoId, setAdminView, adminView, mode, setCurrentView } = useAppStore();
+  const isEdit = mode === 'admin' && adminView === 'pedido-edit';
+  const isPublic = mode === 'public';
   const [data, setData] = useState<PedidoData>(defaultData);
   const [errors, setErrors] = useState<Partial<Record<keyof PedidoData, string>>>({});
   const [loading, setLoading] = useState(false);
@@ -97,8 +98,12 @@ export function PedidoForm() {
       });
       const json = await res.json();
       if (json.ok) {
-        toast.success(isEdit ? 'Pedido actualizado' : 'Pedido creado');
-        setAdminView('pedidos');
+        toast.success(isEdit ? 'Pedido actualizado' : 'Pedido creado correctamente');
+        if (isPublic) {
+          setCurrentView('home');
+        } else {
+          setAdminView('pedidos');
+        }
       } else {
         if (json.error && typeof json.error === 'object') {
           setErrors(json.error);
@@ -139,12 +144,12 @@ export function PedidoForm() {
       className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
     >
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => setAdminView('pedidos')}>
+        <Button variant="ghost" size="icon" onClick={() => isPublic ? setCurrentView('home') : setAdminView('pedidos')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">
-            {isEdit ? `Editar Pedido #${selectedPedidoId}` : 'Nuevo Pedido'}
+            {isEdit ? `Editar Pedido #${selectedPedidoId}` : 'Nuevo Envío'}
           </h1>
           <p className="text-zinc-500 text-sm mt-0.5">
             {isEdit ? 'Modifica los datos del pedido' : 'Completa el formulario para crear un nuevo envío'}
@@ -304,7 +309,7 @@ export function PedidoForm() {
               )}
               {isEdit ? 'Actualizar Pedido' : 'Crear Pedido'}
             </Button>
-            <Button variant="outline" onClick={() => setAdminView('pedidos')}>
+            <Button variant="outline" onClick={() => isPublic ? setCurrentView('home') : setAdminView('pedidos')}>
               Cancelar
             </Button>
           </div>

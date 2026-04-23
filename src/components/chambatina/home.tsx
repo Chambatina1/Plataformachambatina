@@ -77,13 +77,13 @@ export function Home() {
   }, [calcPeso, calcTipo]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50/50 to-orange-50/30">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-orange-600 via-orange-500 to-amber-500 overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-72 h-72 bg-yellow-300 rounded-full blur-3xl" />
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-orange-700 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-300 rounded-full blur-3xl" />
+      <section className="relative bg-gradient-to-b from-white via-orange-50/30 to-white overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.03]">
+          <div className="absolute top-10 left-10 w-72 h-72 bg-orange-400 rounded-full blur-3xl" />
+          <div className="absolute bottom-10 right-10 w-96 h-96 bg-amber-400 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-orange-300 rounded-full blur-3xl" />
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
           <motion.div
@@ -91,16 +91,16 @@ export function Home() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/20 backdrop-blur shadow-lg shadow-orange-900/20 mb-6 overflow-hidden">
+            <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-orange-50 border border-orange-100 shadow-lg shadow-orange-500/5 mb-6 overflow-hidden">
               <Image src="/logo.png" alt="Chambatina" width={96} height={96} className="object-contain" />
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight mb-4">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-zinc-900 tracking-tight mb-4">
               CHAMBATINA
             </h1>
-            <p className="text-lg sm:text-xl text-amber-100 font-medium tracking-wide mb-2">
+            <p className="text-lg sm:text-xl text-orange-600 font-semibold tracking-wide mb-2">
               Envíos Internacionales & Sistemas Solares
             </p>
-            <p className="text-white/70 max-w-2xl mx-auto text-sm sm:text-base mb-8">
+            <p className="text-zinc-500 max-w-2xl mx-auto text-sm sm:text-base mb-8">
               Tu empresa de logística confiable entre Estados Unidos y Latinoamérica. 
               Enviamos paquetes, bicicletas, electrodomésticos y ofrecemos soluciones de energía solar.
             </p>
@@ -108,7 +108,7 @@ export function Home() {
               <Button
                 size="lg"
                 onClick={() => goToNuevoPedido()}
-                className="bg-white text-orange-600 hover:bg-orange-50 font-semibold px-8 shadow-lg shadow-orange-900/20"
+                className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 shadow-lg shadow-orange-500/20"
               >
                 <Package className="h-5 w-5 mr-2" />
                 Hacer un Envío
@@ -117,7 +117,7 @@ export function Home() {
                 size="lg"
                 variant="outline"
                 onClick={() => setCurrentView('rastreador')}
-                className="border-white/30 text-white hover:bg-white/10 px-8"
+                className="border-orange-200 text-orange-700 hover:bg-orange-50 px-8"
               >
                 <Search className="h-5 w-5 mr-2" />
                 Rastrear Paquete
@@ -134,7 +134,7 @@ export function Home() {
               >
                 <button
                   onClick={() => setShowRegisterDialog(true)}
-                  className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
+                  className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-orange-600 transition-colors"
                 >
                   <UserCircle className="h-4 w-4" />
                   ¿Primera vez? Regístrate para un mejor servicio
@@ -145,7 +145,7 @@ export function Home() {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="mt-4 text-sm text-white/60"
+                className="mt-4 text-sm text-zinc-500"
               >
                 Bienvenido, {currentUser.nombre}
               </motion.p>
@@ -155,7 +155,7 @@ export function Home() {
       </section>
 
       {/* Services */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-10">
         <motion.div
           variants={stagger}
           initial="initial"
@@ -164,15 +164,15 @@ export function Home() {
         >
           <motion.div variants={fadeIn}>
             <Card
-              className="cursor-pointer hover:shadow-lg transition-shadow border-0 shadow-md bg-white"
+              className="cursor-pointer hover:shadow-lg transition-shadow border border-zinc-100 shadow-sm bg-white"
               onClick={() => setCurrentView('tienda')}
             >
               <CardHeader className="pb-3">
-                <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center mb-2">
-                  <Truck className="h-6 w-6 text-orange-600" />
+                <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mb-2">
+                  <Truck className="h-6 w-6 text-orange-500" />
                 </div>
-                <CardTitle className="text-lg">Envíos Internacionales</CardTitle>
-                <CardDescription className="text-sm">
+                <CardTitle className="text-lg text-zinc-900">Envíos Internacionales</CardTitle>
+                <CardDescription className="text-sm text-zinc-500">
                   Desde $1.80/libra. Recogemos en tu casa o trae a nuestra oficina.
                 </CardDescription>
               </CardHeader>
@@ -186,15 +186,15 @@ export function Home() {
 
           <motion.div variants={fadeIn}>
             <Card
-              className="cursor-pointer hover:shadow-lg transition-shadow border-0 shadow-md bg-white"
+              className="cursor-pointer hover:shadow-lg transition-shadow border border-zinc-100 shadow-sm bg-white"
               onClick={() => setCurrentView('tienda')}
             >
               <CardHeader className="pb-3">
-                <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mb-2">
-                  <Sun className="h-6 w-6 text-amber-600" />
+                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center mb-2">
+                  <Sun className="h-6 w-6 text-amber-500" />
                 </div>
-                <CardTitle className="text-lg">Sistemas Solares</CardTitle>
-                <CardDescription className="text-sm">
+                <CardTitle className="text-lg text-zinc-900">Sistemas Solares</CardTitle>
+                <CardDescription className="text-sm text-zinc-500">
                   Asesoría y productos EcoFlow para energía solar.
                 </CardDescription>
               </CardHeader>
@@ -208,15 +208,15 @@ export function Home() {
 
           <motion.div variants={fadeIn}>
             <Card
-              className="cursor-pointer hover:shadow-lg transition-shadow border-0 shadow-md bg-white"
+              className="cursor-pointer hover:shadow-lg transition-shadow border border-zinc-100 shadow-sm bg-white"
               onClick={() => setCurrentView('rastreador')}
             >
               <CardHeader className="pb-3">
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center mb-2">
-                  <Search className="h-6 w-6 text-emerald-600" />
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-2">
+                  <Search className="h-6 w-6 text-emerald-500" />
                 </div>
-                <CardTitle className="text-lg">Rastreo de Paquetes</CardTitle>
-                <CardDescription className="text-sm">
+                <CardTitle className="text-lg text-zinc-900">Rastreo de Paquetes</CardTitle>
+                <CardDescription className="text-sm text-zinc-500">
                   Busca por número CPK, carnet del destinatario o de un familiar.
                 </CardDescription>
               </CardHeader>
@@ -237,7 +237,7 @@ export function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <Card className="border-0 shadow-lg overflow-hidden bg-white">
+          <Card className="border border-zinc-100 shadow-md overflow-hidden bg-white">
             <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6 text-white">
               <div className="flex items-center gap-3">
                 <Calculator className="h-6 w-6" />
@@ -337,11 +337,11 @@ export function Home() {
           transition={{ duration: 0.4, delay: 0.3 }}
         >
           <Card
-            className="border-0 shadow-lg bg-gradient-to-br from-orange-100 to-amber-50 cursor-pointer hover:shadow-xl transition-shadow"
+            className="border border-zinc-100 shadow-md bg-white cursor-pointer hover:shadow-lg transition-shadow"
             onClick={() => setCurrentView('chat')}
           >
             <CardContent className="p-6 sm:p-8 flex items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shrink-0 shadow-lg shadow-orange-500/20">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shrink-0 shadow-lg shadow-orange-500/10">
                 <Sparkles className="h-8 w-8 text-white" />
               </div>
               <div className="flex-1">
@@ -363,9 +363,9 @@ export function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-          <Card className="border-0 shadow-lg bg-white">
+          <Card className="border border-zinc-100 shadow-md bg-white">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-zinc-900">
                 <MapPin className="h-5 w-5 text-orange-500" />
                 Información de Contacto
               </CardTitle>
