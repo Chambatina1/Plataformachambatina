@@ -79,8 +79,16 @@ export function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50/50 to-orange-50/30">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-orange-600 via-orange-500 to-amber-500 overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
+      <section className="relative overflow-hidden">
+        {/* VW Combi background image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/background-combi.png')" }}
+        />
+        {/* Gradient overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-700/85 via-orange-600/80 to-amber-600/85" />
+        {/* Decorative blurred circles */}
+        <div className="absolute inset-0 opacity-15">
           <div className="absolute top-10 left-10 w-72 h-72 bg-yellow-300 rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-orange-700 rounded-full blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-300 rounded-full blur-3xl" />
