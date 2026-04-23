@@ -76,6 +76,41 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PATCH /api/tracking - Update a single tracking entry (estado, descripcion, etc.)
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, estado, descripcion, consignatario, carnetPrincipal, embarcador, fecha } = body;
+
+    if (!id) {
+      return NextResponse.json({ ok: false, error: 'Se requiere el ID de la entrada' }, { status: 400 });
+    }
+
+    const existing = await db.trackingEntry.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ ok: false, error: 'Entrada de tracking no encontrada' }, { status: 404 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (estado !== undefined && estado !== null && estado.trim() !== '') updateData.estado = estado.trim().toUpperCase();
+    if (descripcion !== undefined) updateData.descripcion = descripcion || null;
+    if (consignatario !== undefined) updateData.consignatario = consignatario || null;
+    if (carnetPrincipal !== undefined) updateData.carnetPrincipal = carnetPrincipal || null;
+    if (embarcador !== undefined) updateData.embarcador = embarcador || null;
+    if (fecha !== undefined) updateData.fecha = fecha || null;
+
+    const updated = await db.trackingEntry.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return NextResponse.json({ ok: true, data: updated });
+  } catch (error) {
+    console.error('Error updating tracking entry:', error);
+    return NextResponse.json({ ok: false, error: 'Error al actualizar entrada de rastreo' }, { status: 500 });
+  }
+}
+
 // DELETE /api/tracking - Clear all tracking entries
 export async function DELETE() {
   try {
