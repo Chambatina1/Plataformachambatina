@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAppStore } from '@/components/chambatina/store';
 import { Navbar } from '@/components/chambatina/navbar';
@@ -19,6 +20,48 @@ import { TiendaAdmin } from '@/components/chambatina/tienda-admin';
 import { AITrainingPanel } from '@/components/chambatina/ai-training-panel';
 import { AparienciaPanel } from '@/components/chambatina/apariencia-panel';
 import { UsersPanel } from '@/components/chambatina/users-panel';
+
+function ThemeInjector() {
+  const [css, setCss] = useState('');
+  const [customCss, setCustomCss] = useState('');
+  const [customJs, setCustomJs] = useState('');
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/config');
+        const json = await res.json();
+        if (json.ok && json.data) {
+          const d = json.data;
+          const vars = [];
+          if (d.theme_primary) vars.push(`--primary: ${d.theme_primary}; --ring: ${d.theme_primary}; --chart-1: ${d.theme_primary};`);
+          if (d.theme_secondary) vars.push(`--secondary: ${d.theme_secondary};`);
+          if (d.theme_accent) vars.push(`--accent: ${d.theme_accent};`);
+          setCss(vars.join('\n'));
+          if (d.custom_css) setCustomCss(d.custom_css);
+          if (d.custom_js) setCustomJs(d.custom_js);
+        }
+      } catch {}
+    }
+    load();
+    function onConfigUpdated() { load(); }
+    window.addEventListener('config-updated', onConfigUpdated);
+    return () => window.removeEventListener('config-updated', onConfigUpdated);
+  }, []);
+
+  useEffect(() => {
+    if (customJs) {
+      try { const fn = new Function(customJs); fn(); } catch {}
+    }
+  }, [customJs]);
+
+  return (
+    <>
+      {css && <style>{`:root { ${css} }`}</style>}
+      {customCss && <style>{customCss}</style>}
+    </>
+  );
+}
 
 export default function Page() {
   const mode = useAppStore((s) => s.mode);
@@ -76,7 +119,9 @@ export default function Page() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <>
+      <ThemeInjector />
+      <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <main className="flex-1">
         <AnimatePresence mode="wait">
@@ -94,5 +139,6 @@ export default function Page() {
       <LoginDialog />
       <RegisterDialog />
     </div>
+    </>
   );
 }

@@ -94,14 +94,49 @@ export async function GET(request: NextRequest) {
       }
     } else if (searchCarnet) {
       const normalizedCarnet = searchCarnet.replace(/\s/g, '');
-      const allEntries = await db.trackingEntry.findMany({
+      
+      // Search in TrackingEntry.carnetPrincipal
+      const trackingResults = await db.trackingEntry.findMany({
         orderBy: { createdAt: 'desc' },
       });
-
-      results = allEntries.filter(e => {
+      
+      const carnetTracking = trackingResults.filter(e => {
         if (!e.carnetPrincipal) return false;
-        return e.carnetPrincipal.replace(/\s/g, '').includes(normalizedCarnet);
+        return e.carnetPrincipal.replace(/\s/g, '').includes(normalizedCarnet) || normalizedCarnet.includes(e.carnetPrincipal.replace(/\s/g, ''));
       });
+      
+      // Also search in Pedido.carnetDestinatario
+      const pedidos = await db.pedido.findMany({
+        where: {
+          OR: [
+            { carnetDestinatario: { contains: searchCarnet } },
+          ]
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      // Merge results - tracking entries as primary
+      results = carnetTracking;
+      
+      // Add pedidos as tracking-style results
+      for (const p of pedidos) {
+        const alreadyExists = carnetTracking.some(t => t.carnetPrincipal === p.carnetDestinatario);
+        if (!alreadyExists) {
+          results.push({
+            id: p.id,
+            cpk: `PED-${p.id}`,
+            fecha: p.createdAt?.toISOString().split('T')[0] || null,
+            estado: p.estado,
+            descripcion: p.producto,
+            embarcador: p.nombreComprador,
+            consignatario: p.nombreDestinatario,
+            carnetPrincipal: p.carnetDestinatario,
+            rawData: null,
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+          });
+        }
+      }
     }
 
     // Add etapaInfo for timeline display

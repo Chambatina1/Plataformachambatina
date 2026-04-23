@@ -263,14 +263,14 @@ export function AITrainingPanel() {
     setTestLoading(true);
     setTestAnswer('');
     try {
-      const res = await fetch('/api/ai-knowledge/test', {
+      const res = await fetch('/api/ai-knowledge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pregunta: testQuestion }),
+        body: JSON.stringify({ test: true, pregunta: testQuestion }),
       });
       const json = await res.json();
       if (json.ok) {
-        setTestAnswer(json.data.respuesta || 'No se encontró respuesta relevante.');
+        setTestAnswer(json.data.aiResponse || 'No se encontró respuesta relevante.');
       } else {
         setTestAnswer('Error: ' + (json.error || 'No se pudo procesar'));
       }

@@ -124,12 +124,7 @@ export const useAppStore = create<AppState>()(
       goToPedidoEdit: (id) =>
         set({ adminView: 'pedido-edit', selectedPedidoId: id }),
       goToNuevoPedido: () => {
-        const { isLoggedIn } = get();
-        if (isLoggedIn) {
-          set({ mode: 'admin', adminView: 'pedido-form', selectedPedidoId: null });
-        } else {
-          set({ showLoginDialog: true, pendingAdminView: 'pedido-form' });
-        }
+        set({ mode: 'admin', adminView: 'pedido-form', selectedPedidoId: null });
       },
       goBackToPublic: () =>
         set({ mode: 'public', adminView: 'dashboard' }),
