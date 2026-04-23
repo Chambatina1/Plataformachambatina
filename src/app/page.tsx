@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAppStore } from '@/components/chambatina/store';
 import { Navbar } from '@/components/chambatina/navbar';
 import { LoginDialog } from '@/components/chambatina/login-dialog';
+import { RegisterDialog } from '@/components/chambatina/register-dialog';
 import { Home } from '@/components/chambatina/home';
 import { Tienda } from '@/components/chambatina/tienda';
 import { PedidosList } from '@/components/chambatina/pedidos-list';
@@ -14,6 +15,10 @@ import { TrackingUpload } from '@/components/chambatina/tracking-upload';
 import { ConfigPanel } from '@/components/chambatina/config-panel';
 import { Rastreador } from '@/components/chambatina/rastreador';
 import { ChatIA } from '@/components/chambatina/chat-ia';
+import { TiendaAdmin } from '@/components/chambatina/tienda-admin';
+import { AITrainingPanel } from '@/components/chambatina/ai-training-panel';
+import { AparienciaPanel } from '@/components/chambatina/apariencia-panel';
+import { UsersPanel } from '@/components/chambatina/users-panel';
 
 export default function Page() {
   const mode = useAppStore((s) => s.mode);
@@ -33,6 +38,8 @@ export default function Page() {
           return <Rastreador />;
         case 'chat':
           return <ChatIA />;
+        case 'registro':
+          return null; // Handled by dialog
         default:
           return <Home />;
       }
@@ -52,6 +59,16 @@ export default function Page() {
           return <TrackingUpload />;
         case 'config':
           return <ConfigPanel />;
+        case 'tienda-admin':
+          return <TiendaAdmin />;
+        case 'ai-training':
+          return <AITrainingPanel />;
+        case 'apariencia':
+          return <AparienciaPanel />;
+        case 'users':
+          return <UsersPanel />;
+        case 'emails':
+          return <ConfigPanel />; // Email config is part of config panel
         default:
           return <AdminDashboard />;
       }
@@ -75,6 +92,7 @@ export default function Page() {
         </AnimatePresence>
       </main>
       <LoginDialog />
+      <RegisterDialog />
     </div>
   );
 }

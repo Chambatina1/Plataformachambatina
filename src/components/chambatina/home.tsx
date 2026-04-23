@@ -18,6 +18,8 @@ import {
   ChevronRight,
   Weight,
   DollarSign,
+  Sparkles,
+  UserCircle,
 } from 'lucide-react';
 import { calcularEnvio, type EnvioTipo } from '@/lib/chambatina';
 
@@ -32,7 +34,7 @@ const stagger = {
 };
 
 export function Home() {
-  const { setCurrentView, goToNuevoPedido } = useAppStore();
+  const { setCurrentView, goToNuevoPedido, currentUser, setShowRegisterDialog } = useAppStore();
   const [calcPeso, setCalcPeso] = useState('');
   const [calcTipo, setCalcTipo] = useState<EnvioTipo>('equipo');
   const [config, setConfig] = useState({
@@ -75,12 +77,13 @@ export function Home() {
   }, [calcPeso, calcTipo]);
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-gradient-to-b from-amber-50/50 to-orange-50/30">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-orange-600 via-orange-500 to-amber-500 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-72 h-72 bg-amber-500 rounded-full blur-3xl" />
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-orange-500 rounded-full blur-3xl" />
+          <div className="absolute top-10 left-10 w-72 h-72 bg-yellow-300 rounded-full blur-3xl" />
+          <div className="absolute bottom-10 right-10 w-96 h-96 bg-orange-700 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-300 rounded-full blur-3xl" />
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
           <motion.div
@@ -88,24 +91,24 @@ export function Home() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-amber-500 shadow-lg shadow-amber-500/20 mb-6 overflow-hidden">
+            <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/20 backdrop-blur shadow-lg shadow-orange-900/20 mb-6 overflow-hidden">
               <Image src="/logo.png" alt="Chambatina" width={96} height={96} className="object-contain" />
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight mb-4">
               CHAMBATINA
             </h1>
-            <p className="text-lg sm:text-xl text-amber-400 font-medium tracking-wide mb-2">
+            <p className="text-lg sm:text-xl text-amber-100 font-medium tracking-wide mb-2">
               Envíos Internacionales & Sistemas Solares
             </p>
-            <p className="text-zinc-400 max-w-2xl mx-auto text-sm sm:text-base mb-8">
-              Tu empresa de logística confiable. Enviamos paquetes, bicicletas, 
-              electrodomésticos y ofrecemos soluciones de energía solar.
+            <p className="text-white/70 max-w-2xl mx-auto text-sm sm:text-base mb-8">
+              Tu empresa de logística confiable entre Estados Unidos y Latinoamérica. 
+              Enviamos paquetes, bicicletas, electrodomésticos y ofrecemos soluciones de energía solar.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
                 size="lg"
                 onClick={() => goToNuevoPedido()}
-                className="bg-amber-500 hover:bg-amber-600 text-black font-semibold px-8"
+                className="bg-white text-orange-600 hover:bg-orange-50 font-semibold px-8 shadow-lg shadow-orange-900/20"
               >
                 <Package className="h-5 w-5 mr-2" />
                 Hacer un Envío
@@ -114,12 +117,39 @@ export function Home() {
                 size="lg"
                 variant="outline"
                 onClick={() => setCurrentView('rastreador')}
-                className="border-zinc-600 text-white hover:bg-zinc-800 px-8"
+                className="border-white/30 text-white hover:bg-white/10 px-8"
               >
                 <Search className="h-5 w-5 mr-2" />
                 Rastrear Paquete
               </Button>
             </div>
+
+            {/* User registration prompt */}
+            {!currentUser && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.4 }}
+                className="mt-6"
+              >
+                <button
+                  onClick={() => setShowRegisterDialog(true)}
+                  className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
+                >
+                  <UserCircle className="h-4 w-4" />
+                  ¿Primera vez? Regístrate para un mejor servicio
+                </button>
+              </motion.div>
+            )}
+            {currentUser && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-4 text-sm text-white/60"
+              >
+                Bienvenido, {currentUser.nombre}
+              </motion.p>
+            )}
           </motion.div>
         </div>
       </section>
@@ -134,12 +164,12 @@ export function Home() {
         >
           <motion.div variants={fadeIn}>
             <Card
-              className="cursor-pointer hover:shadow-lg transition-shadow border-0 shadow-md"
+              className="cursor-pointer hover:shadow-lg transition-shadow border-0 shadow-md bg-white"
               onClick={() => setCurrentView('tienda')}
             >
               <CardHeader className="pb-3">
-                <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mb-2">
-                  <Truck className="h-6 w-6 text-amber-600" />
+                <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center mb-2">
+                  <Truck className="h-6 w-6 text-orange-600" />
                 </div>
                 <CardTitle className="text-lg">Envíos Internacionales</CardTitle>
                 <CardDescription className="text-sm">
@@ -147,7 +177,7 @@ export function Home() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="flex items-center text-amber-600 text-sm font-medium">
+                <div className="flex items-center text-orange-600 text-sm font-medium">
                   Ver precios <ChevronRight className="h-4 w-4 ml-1" />
                 </div>
               </CardContent>
@@ -156,12 +186,12 @@ export function Home() {
 
           <motion.div variants={fadeIn}>
             <Card
-              className="cursor-pointer hover:shadow-lg transition-shadow border-0 shadow-md"
+              className="cursor-pointer hover:shadow-lg transition-shadow border-0 shadow-md bg-white"
               onClick={() => setCurrentView('tienda')}
             >
               <CardHeader className="pb-3">
-                <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center mb-2">
-                  <Sun className="h-6 w-6 text-orange-600" />
+                <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mb-2">
+                  <Sun className="h-6 w-6 text-amber-600" />
                 </div>
                 <CardTitle className="text-lg">Sistemas Solares</CardTitle>
                 <CardDescription className="text-sm">
@@ -169,7 +199,7 @@ export function Home() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="flex items-center text-orange-600 text-sm font-medium">
+                <div className="flex items-center text-amber-600 text-sm font-medium">
                   Más información <ChevronRight className="h-4 w-4 ml-1" />
                 </div>
               </CardContent>
@@ -178,7 +208,7 @@ export function Home() {
 
           <motion.div variants={fadeIn}>
             <Card
-              className="cursor-pointer hover:shadow-lg transition-shadow border-0 shadow-md"
+              className="cursor-pointer hover:shadow-lg transition-shadow border-0 shadow-md bg-white"
               onClick={() => setCurrentView('rastreador')}
             >
               <CardHeader className="pb-3">
@@ -187,7 +217,7 @@ export function Home() {
                 </div>
                 <CardTitle className="text-lg">Rastreo de Paquetes</CardTitle>
                 <CardDescription className="text-sm">
-                  Busca por número CPK o carnet de identidad del destinatario.
+                  Busca por número CPK, carnet del destinatario o de un familiar.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
@@ -207,13 +237,13 @@ export function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <Card className="border-0 shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
+          <Card className="border-0 shadow-lg overflow-hidden bg-white">
+            <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6 text-white">
               <div className="flex items-center gap-3">
                 <Calculator className="h-6 w-6" />
                 <div>
                   <h2 className="text-xl font-bold">Calculadora de Envío</h2>
-                  <p className="text-amber-100 text-sm">Calcula el costo de tu envío al instante</p>
+                  <p className="text-orange-100 text-sm">Calcula el costo de tu envío al instante</p>
                 </div>
               </div>
             </div>
@@ -224,13 +254,13 @@ export function Home() {
                     Peso (libras)
                   </label>
                   <div className="relative">
-                    <Weight className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                    <Weight className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-orange-400" />
                     <Input
                       type="number"
                       placeholder="Ej: 10"
                       value={calcPeso}
                       onChange={(e) => setCalcPeso(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 border-orange-200 focus:border-orange-400"
                       min="0"
                     />
                   </div>
@@ -250,7 +280,10 @@ export function Home() {
                         variant={calcTipo === opt.value ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setCalcTipo(opt.value)}
-                        className={calcTipo === opt.value ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}
+                        className={calcTipo === opt.value
+                          ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white border-0'
+                          : 'border-orange-200 text-orange-700 hover:bg-orange-50'
+                        }
                       >
                         {opt.label}
                       </Button>
@@ -263,11 +296,11 @@ export function Home() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-amber-50 border border-amber-200 rounded-lg p-4"
+                  className="bg-orange-50 border border-orange-200 rounded-lg p-4"
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <DollarSign className="h-5 w-5 text-amber-600" />
-                    <span className="font-semibold text-amber-900">Resultado del Cálculo</span>
+                    <DollarSign className="h-5 w-5 text-orange-600" />
+                    <span className="font-semibold text-orange-900">Resultado del Cálculo</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                     <div>
@@ -286,11 +319,38 @@ export function Home() {
                     )}
                     <div className="col-span-2 sm:col-span-1">
                       <span className="text-zinc-500">Total:</span>
-                      <p className="text-xl font-bold text-amber-600">${calcResult.total.toFixed(2)}</p>
+                      <p className="text-xl font-bold text-orange-600">${calcResult.total.toFixed(2)}</p>
                     </div>
                   </div>
                 </motion.div>
               )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </section>
+
+      {/* AI Chat Promo */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
+          <Card
+            className="border-0 shadow-lg bg-gradient-to-br from-orange-100 to-amber-50 cursor-pointer hover:shadow-xl transition-shadow"
+            onClick={() => setCurrentView('chat')}
+          >
+            <CardContent className="p-6 sm:p-8 flex items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shrink-0 shadow-lg shadow-orange-500/20">
+                <Sparkles className="h-8 w-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-zinc-900 mb-1">Asistente Virtual Inteligente</h2>
+                <p className="text-zinc-600 text-sm">
+                  Pregúntame sobre precios, rastreo, horarios o cualquier duda. Estoy entrenado para ayudarte con todo lo de Chambatina.
+                </p>
+              </div>
+              <ChevronRight className="h-6 w-6 text-orange-400 shrink-0" />
             </CardContent>
           </Card>
         </motion.div>
@@ -301,19 +361,19 @@ export function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
         >
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg bg-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-amber-500" />
+                <MapPin className="h-5 w-5 text-orange-500" />
                 Información de Contacto
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-zinc-400 mt-0.5 shrink-0" />
+                  <MapPin className="h-5 w-5 text-orange-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium text-sm">Oficina</p>
                     <p className="text-sm text-zinc-500">{config.direccion}</p>
@@ -323,25 +383,25 @@ export function Home() {
               </div>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <Phone className="h-5 w-5 text-zinc-400 mt-0.5 shrink-0" />
+                  <Phone className="h-5 w-5 text-orange-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium text-sm">Teléfonos</p>
                     {config.telefono1 && (
                       <p className="text-sm text-zinc-500">
                         {config.nombre_contacto1 ? `${config.nombre_contacto1}: ` : ''}
-                        <a href={`tel:${config.telefono1.replace(/\D/g, '')}`} className="text-amber-600 hover:underline">{config.telefono1}</a>
+                        <a href={`tel:${config.telefono1.replace(/\D/g, '')}`} className="text-orange-600 hover:underline">{config.telefono1}</a>
                       </p>
                     )}
                     {config.telefono2 && (
                       <p className="text-sm text-zinc-500">
                         {config.nombre_contacto2 ? `${config.nombre_contacto2}: ` : ''}
-                        <a href={`tel:${config.telefono2.replace(/\D/g, '')}`} className="text-amber-600 hover:underline">{config.telefono2}</a>
+                        <a href={`tel:${config.telefono2.replace(/\D/g, '')}`} className="text-orange-600 hover:underline">{config.telefono2}</a>
                       </p>
                     )}
                     {config.telefono3 && (
                       <p className="text-sm text-zinc-500">
                         {config.nombre_contacto3 ? `${config.nombre_contacto3}: ` : ''}
-                        <a href={`tel:${config.telefono3.replace(/\D/g, '')}`} className="text-amber-600 hover:underline">{config.telefono3}</a>
+                        <a href={`tel:${config.telefono3.replace(/\D/g, '')}`} className="text-orange-600 hover:underline">{config.telefono3}</a>
                       </p>
                     )}
                     {config.whatsapp && (
@@ -351,7 +411,7 @@ export function Home() {
                     )}
                     {config.email && (
                       <p className="text-sm text-zinc-500 mt-1">
-                        Email: <a href={`mailto:${config.email}`} className="text-amber-600 hover:underline">{config.email}</a>
+                        Email: <a href={`mailto:${config.email}`} className="text-orange-600 hover:underline">{config.email}</a>
                       </p>
                     )}
                   </div>

@@ -31,10 +31,62 @@ async function getConfig(keys: string[]): Promise<Record<string, string>> {
     }
     return result;
   } catch {
-    // Fallback to defaults
     const result: Record<string, string> = {};
     for (const k of keys) result[k] = CONFIG_DEFAULTS[k] || '';
     return result;
+  }
+}
+
+// Search knowledge base for matching entries
+async function searchKnowledge(query: string): Promise<string> {
+  try {
+    const queryWords = query.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 2);
+
+    if (queryWords.length === 0) return '';
+
+    const entries = await db.aIKnowledge.findMany({
+      where: { activa: true },
+      orderBy: { prioridad: 'desc' },
+    });
+
+    // Score each entry
+    const scored = entries.map(entry => {
+      const preguntaLower = entry.pregunta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const keywordsLower = entry.keywords.map(k => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+      
+      let score = 0;
+      
+      // Check keywords match
+      for (const kw of keywordsLower) {
+        if (queryWords.some(qw => qw === kw || qw.includes(kw) || kw.includes(qw))) {
+          score += 10;
+        }
+      }
+      
+      // Check pregunta words match
+      for (const qw of queryWords) {
+        if (preguntaLower.includes(qw)) {
+          score += 5;
+        }
+      }
+      
+      // Category bonus
+      if (entry.prioridad > 0) score += entry.prioridad;
+      
+      return { entry, score };
+    }).filter(s => s.score > 5).sort((a, b) => b.score - a.score);
+
+    if (scored.length > 0) {
+      const topEntries = scored.slice(0, 3);
+      return topEntries.map(s => s.entry.respuesta).join('\n\n');
+    }
+    return '';
+  } catch {
+    return '';
   }
 }
 
@@ -58,38 +110,38 @@ export async function POST(request: NextRequest) {
 
     switch (intent.intent) {
       case 'saludo':
-        respuesta = '¡Hola! 👋 Soy el asistente virtual de **Chambatina**. ¿En qué puedo ayudarte?\n\nPuedes preguntarme sobre:\n- 📦 Precios de envío\n- 🚲 Precios de bicicletas\n- 📋 Rastreo de paquetes (CPK)\n- ☀️ Sistemas solares\n- 📍 Información de contacto';
+        respuesta = '¡Hola! 👋 Soy el asistente virtual de **Chambatina**. Estoy aquí para ayudarte con lo que necesites.\n\nPuedo ayudarte con:\n- 📦 **Precios de envío** — Dime el peso y te calculo el costo\n- 🚲 **Envío de bicicletas** — Precios por tipo\n- 📋 **Rastreo de paquetes** — Busca por CPK o carnet\n- ☀️ **Sistemas solares** — Info sobre EcoFlow\n- 📍 **Información de contacto** — Dirección y teléfonos\n\n¿En qué te puedo ayudar?';
         break;
 
       case 'precio_peso': {
         const { peso, tipo, total, subtotal, cargoEquipo } = intent.data;
         const tipoLabel = tipo === 'recogida' ? 'recogida a domicilio' : tipo === 'tiktok' ? 'compras TikTok' : 'equipo';
-        respuesta = `💰 **Cálculo de envío:**\n\n- **Peso:** ${peso} lb\n- **Tipo:** ${tipoLabel}\n- **Precio por libra:** $${intent.data.precioPorLibra.toFixed(2)}\n- **Subtotal:** $${subtotal.toFixed(2)}\n${cargoEquipo > 0 ? `- **Cargo por equipo:** $${cargoEquipo.toFixed(2)}\n` : ''}- **Total: $${total.toFixed(2)}**\n\n${tipo === 'equipo' ? 'Fórmula: (Peso × $1.99) + $25 cargo de equipo' : `Fórmula: Peso × $${intent.data.precioPorLibra.toFixed(2)}`}`;
+        respuesta = `💰 **Cálculo de envío:**\n\n- **Peso:** ${peso} lb\n- **Tipo:** ${tipoLabel}\n- **Precio por libra:** $${intent.data.precioPorLibra.toFixed(2)}\n- **Subtotal:** $${subtotal.toFixed(2)}\n${cargoEquipo > 0 ? `- **Cargo por equipo:** $${cargoEquipo.toFixed(2)}\n` : ''}- **Total: $${total.toFixed(2)}**\n\n${tipo === 'equipo' ? 'Fórmula: (Peso × $1.99) + $25 cargo de equipo' : `Fórmula: Peso × $${intent.data.precioPorLibra.toFixed(2)}`}\n\n¿Deseas hacer este envío? Puedes ir a la sección de **Hacer un Envío** desde el menú.`;
         break;
       }
 
       case 'precio_bicicleta':
-        respuesta = `🚲 **Precios de Bicicletas:**\n\n${intent.data.bicicletas.map((b: { descripcion: string; precio: number }) => `- **${b.descripcion}**: $${b.precio}`).join('\n')}\n\n¿Necesitas más información sobre algún tipo en particular?`;
+        respuesta = `🚲 **Precios de Envío de Bicicletas:**\n\n${intent.data.bicicletas.map((b: { descripcion: string; precio: number }) => `- **${b.descripcion}**: $${b.precio}`).join('\n')}\n\n¿Necesitas enviar una bicicleta? Contáctanos para coordinar la recogida.`;
         break;
 
       case 'precio_caja':
-        respuesta = `📦 **Precios de Cajas:**\n\n${intent.data.cajas.map((c: { nombre: string; dimensiones: string; pesoMaximo: number; precio: number }) => `- **${c.nombre}** (${c.dimensiones}, hasta ${c.pesoMaximo} lb): $${c.precio}`).join('\n')}`;
+        respuesta = `📦 **Precios de Cajas de Envío:**\n\n${intent.data.cajas.map((c: { nombre: string; dimensiones: string; pesoMaximo: number; precio: number }) => `- **${c.nombre}** (${c.dimensiones}, hasta ${c.pesoMaximo} lb): $${c.precio}`).join('\n')}\n\n¿Necesitas una caja para tu envío?`;
         break;
 
       case 'precio_general':
-        respuesta = `💰 **Lista de Precios Chambatina:**\n\n**Envíos:**\n- Por libra (equipo): **$1.99** + $25 cargo\n- Recogida a domicilio: **$2.30/lb**\n- Compras TikTok: **$1.80/lb**\n\n**Bicicletas:**\n${intent.data.bicicletas.map((b: { descripcion: string; precio: number }) => `- ${b.descripcion}: $${b.precio}`).join('\n')}\n\n**Cajas:**\n${intent.data.cajas.map((c: { nombre: string; dimensiones: string; precio: number }) => `- ${c.nombre} (${c.dimensiones}): $${c.precio}`).join('\n')}\n\n¿Quieres que calcule el precio de un envío específico? Solo dime el peso.`;
+        respuesta = `💰 **Lista de Precios Chambatina:**\n\n**Envíos por libra:**\n- 🏢 Equipo: **$1.99/lb** + $25 cargo\n- 🏠 Recogida a domicilio: **$2.30/lb**\n- 🛒 Compras TikTok: **$1.80/lb**\n\n**Bicicletas:**\n${intent.data.bicicletas.map((b: { descripcion: string; precio: number }) => `- ${b.descripcion}: $${b.precio}`).join('\n')}\n\n**Cajas:**\n${intent.data.cajas.map((c: { nombre: string; dimensiones: string; precio: number }) => `- ${c.nombre} (${c.dimensiones}): $${c.precio}`).join('\n')}\n\n¿Quieres que calcule el precio de un envío específico? Solo dime el peso.`;
         break;
 
       case 'tracking_cpk':
-        respuesta = `📋 Buscando el paquete **${intent.data.cpk}**...\n\nPor favor usa el **Rastreador** en el menú principal para buscar tu paquete con el número CPK para obtener información en tiempo real.`;
+        respuesta = `📋 Para rastrear el paquete **${intent.data.cpk}**, usa el **Rastreador** en el menú principal.\n\nAhí podrás ver el estado actual, la ubicación y el historial completo de tu envío en tiempo real.`;
         break;
 
       case 'tracking_carnet':
-        respuesta = `📋 Buscando por carnet **${intent.data.carnet}**...\n\nPor favor usa el **Rastreador** en el menú principal para buscar por número de carnet.`;
+        respuesta = `📋 Para buscar por carnet **${intent.data.carnet}**, ve al **Rastreador** en el menú principal.\n\nSolo ingresa tu número de carnet y te mostraremos todos los paquetes asociados.`;
         break;
 
       case 'tracking_info':
-        respuesta = `📋 **Rastreo de Paquetes:**\n\nPuedes rastrear tu paquete usando:\n- **Número CPK** (ejemplo: CPK-0266228)\n- **Carnet de identidad** del destinatario\n\nUsa el **Rastreador** en el menú principal para buscar. ¿Tienes tu número CPK o carnet?`;
+        respuesta = `📋 **Rastreo de Paquetes:**\n\nPuedes rastrear tu paquete usando:\n- **Número CPK** (ejemplo: CPK-0266228 o solo el número 266228)\n- **Carnet de identidad** del destinatario o de un familiar\n\nUsa el **Rastreador** en el menú principal para buscar en tiempo real.`;
         break;
 
       case 'contacto': {
@@ -104,12 +156,12 @@ export async function POST(request: NextRequest) {
         if (d.email) telefonos += `\n- Email: **${d.email}**`;
         let horarioStr = '';
         if (d.horario) horarioStr = `\n\n⏰ **Horario:** ${d.horario}`;
-        respuesta = `📍 **Información de Contacto:**\n\n🏢 **Oficina:** ${direccion}\n\n📞 **Teléfonos:**\n- ${telefonos}${horarioStr}`;
+        respuesta = `📍 **Información de Contacto:**\n\n🏢 **Oficina:** ${direccion}\n\n📞 **Teléfonos:**\n- ${telefonos}${horarioStr}\n\n¡Visítanos o llámanos, estamos para ayudarte!`;
         break;
       }
 
       case 'bicicletas':
-        respuesta = `🚲 **Servicio de Envío de Bicicletas:**\n\n${BICICLETAS.map(b => `- **${b.descripcion}**: $${b.precio}`).join('\n')}\n\n¿Te interesa enviar una bicicleta?`;
+        respuesta = `🚲 **Servicio de Envío de Bicicletas Chambatina:**\n\n${BICICLETAS.map(b => `- **${b.descripcion}**: $${b.precio}`).join('\n')}\n\n¿Te interesa enviar una bicicleta? Contáctanos y coordinamos la recogida.`;
         break;
 
       case 'solar': {
@@ -118,13 +170,16 @@ export async function POST(request: NextRequest) {
         if (sd.telefono1) solarLines.push(`📞 **${sd.telefono1}** (${sd.nombre_contacto1 || 'Contacto'})`);
         if (sd.telefono2) solarLines.push(`📞 **${sd.telefono2}** (${sd.nombre_contacto2 || 'Contacto'})`);
         const solarPhones = solarLines.join('\n') || '📞 Contacta a la oficina';
-        respuesta = `☀️ **Sistemas de Energía Solar:**\n\nChambatina ofrece orientación y productos de energía solar, incluyendo sistemas **EcoFlow**.\n\nPara más información sobre productos y precios, te recomendamos contactar directamente a la oficina:\n${solarPhones}`;
+        respuesta = `☀️ **Sistemas de Energía Solar:**\n\nChambatina ofrece orientación y productos de energía solar, incluyendo sistemas **EcoFlow** para tu hogar o negocio.\n\nPara más información sobre productos y precios:\n${solarPhones}\n\n¡La energía solar es el futuro, y nosotros te ayudamos a dar el primer paso!`;
         break;
       }
 
       default: {
-        // For general chat, use AI
+        // For general chat, first search knowledge base, then use AI with context
         try {
+          // Search knowledge base first
+          const knowledgeContext = await searchKnowledge(mensaje);
+          
           const chatHistory = await db.chatMessage.findMany({
             where: { sessionId },
             orderBy: { createdAt: 'asc' },
@@ -136,10 +191,16 @@ export async function POST(request: NextRequest) {
             content: m.content,
           }));
 
+          // Enhanced system prompt with knowledge
+          let systemPrompt = BUSINESS_CONTEXT;
+          if (knowledgeContext) {
+            systemPrompt += `\n\nCONOCIMIENTO ESPECÍFICO DE LA BASE DE DATOS:\n${knowledgeContext}\n\nUsa esta información para responder si es relevante a la pregunta del usuario. Si la información de la base de datos es relevante, dale prioridad.`;
+          }
+
           const zai = await ZAI.create();
           const completion = await zai.chat.completions.create({
             messages: [
-              { role: 'system', content: BUSINESS_CONTEXT },
+              { role: 'system', content: systemPrompt },
               ...messages,
             ],
           });
@@ -147,7 +208,7 @@ export async function POST(request: NextRequest) {
           respuesta = completion.choices?.[0]?.message?.content || 'Lo siento, no pude generar una respuesta.';
         } catch (aiError) {
           console.error('AI Error:', aiError);
-          respuesta = 'Lo siento, tuve un problema al procesar tu mensaje. ¿Podrías reformular tu pregunta? Si necesitas información específica sobre precios o rastreo, puedo ayudarte directamente.';
+          respuesta = 'Lo siento, tuve un problema al procesar tu mensaje. ¿Podrías reformular tu pregunta?\n\nSi necesitas información sobre **precios** o **rastreo**, puedo ayudarte directamente. También puedes contactarnos por teléfono o WhatsApp.';
         }
         break;
       }

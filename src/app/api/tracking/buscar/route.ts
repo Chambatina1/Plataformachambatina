@@ -20,27 +20,80 @@ function matchEtapa(estado: string) {
   return null;
 }
 
-// GET /api/tracking/buscar?cpk=XXX or ?carnet=XXX
+// GET /api/tracking/buscar?cpk=XXX or ?carnet=XXX or ?q=XXX (smart search)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const cpk = searchParams.get('cpk');
     const carnet = searchParams.get('carnet');
+    const q = searchParams.get('q'); // Smart search - auto detect CPK or carnet
 
-    if (!cpk && !carnet) {
-      return NextResponse.json({ ok: false, error: 'Se requiere parámetro cpk o carnet' }, { status: 400 });
+    // Smart search: if q is provided, auto-detect what it is
+    let searchCPK = cpk;
+    let searchCarnet = carnet;
+
+    if (q && !cpk && !carnet) {
+      const trimmed = q.trim();
+      
+      // Check if it contains CPK prefix
+      if (/CPK/i.test(trimmed)) {
+        searchCPK = trimmed;
+      }
+      // Check if it looks like a CPK number (digits only, 4-8 digits)
+      else if (/^\d{4,8}$/.test(trimmed)) {
+        // Could be partial CPK number - search by contains
+        searchCPK = trimmed;
+      }
+      // Check if it looks like a carnet (8-12 digits)
+      else if (/^\d{8,12}$/.test(trimmed)) {
+        searchCarnet = trimmed;
+      }
+      // Otherwise, try CPK first (might have mixed format)
+      else {
+        searchCPK = trimmed;
+      }
+    }
+
+    if (!searchCPK && !searchCarnet) {
+      return NextResponse.json({ ok: false, error: 'Se requiere un número de búsqueda' }, { status: 400 });
     }
 
     let results;
 
-    if (cpk) {
-      const normalizedCPK = normalizarCPK(cpk);
+    if (searchCPK) {
+      const normalizedCPK = normalizarCPK(searchCPK);
+      
+      // First try exact match
       results = await db.trackingEntry.findMany({
         where: { cpk: normalizedCPK },
         orderBy: { createdAt: 'desc' },
       });
-    } else if (carnet) {
-      const normalizedCarnet = carnet.replace(/\s/g, '');
+
+      // If no exact match and searchCPK is just digits (partial), try contains search
+      if (results.length === 0 && /^\d+$/.test(searchCPK.trim())) {
+        const digits = searchCPK.trim();
+        // Pad to 7 digits for searching
+        const paddedDigits = digits.padStart(7, '0');
+        results = await db.trackingEntry.findMany({
+          where: {
+            cpk: { contains: paddedDigits },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        // Also try with various CPK formats
+        if (results.length === 0) {
+          const allEntries = await db.trackingEntry.findMany({
+            orderBy: { createdAt: 'desc' },
+          });
+          results = allEntries.filter(e => {
+            const numOnly = e.cpk.replace(/[^0-9]/g, '');
+            return numOnly.includes(digits) || paddedDigits.includes(numOnly) || numOnly.includes(paddedDigits);
+          });
+        }
+      }
+    } else if (searchCarnet) {
+      const normalizedCarnet = searchCarnet.replace(/\s/g, '');
       const allEntries = await db.trackingEntry.findMany({
         orderBy: { createdAt: 'desc' },
       });
@@ -51,7 +104,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Add etapaInfo for timeline display - prioritize real estado, fallback to calculated
+    // Add etapaInfo for timeline display
     results = (results || []).map(entry => {
       const matchedEtapa = matchEtapa(entry.estado);
       const etapaInfo = matchedEtapa || estadoPorTiempo(entry.fecha || '');

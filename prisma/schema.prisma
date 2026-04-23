@@ -50,3 +50,58 @@ model Config {
   clave String @unique
   valor String
 }
+
+// ===== NEW MODELS =====
+
+model User {
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  email         String   @unique
+  telefono      String?
+  password      String?
+  direccion     String?
+  ciudad        String?
+  isActive      Boolean  @default(true)
+  registeredAt  DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  emailLogs     EmailLog[]
+}
+
+model TiendaProduct {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  precio      Float
+  categoria   String   @default("general")  // envios, bicicletas, cajas, solar, tiktok, general
+  imagenUrl   String?
+  tiktokUrl   String?
+  activo      Boolean  @default(true)
+  orden       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AIKnowledge {
+  id          Int      @id @default(autoincrement())
+  categoria   String                      // precios, tracking, contacto, general, solar, etc.
+  pregunta    String
+  respuesta   String
+  keywords    String[]                    // Para búsqueda rápida
+  activa      Boolean  @default(true)
+  prioridad   Int      @default(0)        // Mayor = más prioritario
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EmailLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  userEmail String
+  asunto    String
+  tipo      String   // bienvenida, pedido, tracking, etc.
+  estado    String   @default("enviado") // enviado, fallido
+  error     String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}

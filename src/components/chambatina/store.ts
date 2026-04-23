@@ -1,15 +1,30 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-export type PublicView = 'home' | 'tienda' | 'rastreador' | 'chat';
-export type AdminView = 'dashboard' | 'pedidos' | 'tracking' | 'config' | 'pedido-detail' | 'pedido-form' | 'pedido-edit';
+export type PublicView = 'home' | 'tienda' | 'rastreador' | 'chat' | 'registro';
+export type AdminView = 'dashboard' | 'pedidos' | 'tracking' | 'config' | 'pedido-detail' | 'pedido-form' | 'pedido-edit' | 'tienda-admin' | 'ai-training' | 'apariencia' | 'users' | 'emails';
 export type AppMode = 'public' | 'admin';
 
+interface UserData {
+  id: number;
+  nombre: string;
+  email: string;
+  telefono?: string;
+  direccion?: string;
+}
+
 interface AppState {
-  // Auth
+  // Auth - Admin
   isAdmin: boolean;
   isLoggedIn: boolean;
   login: (password: string) => boolean;
   logout: () => void;
+
+  // Auth - User registration
+  currentUser: UserData | null;
+  setCurrentUser: (user: UserData | null) => void;
+  showRegisterDialog: boolean;
+  setShowRegisterDialog: (show: boolean) => void;
 
   // Mode
   mode: AppMode;
@@ -43,79 +58,97 @@ interface AppState {
 
 const ADMIN_PASSWORD = 'chambatina2024';
 
-export const useAppStore = create<AppState>((set, get) => ({
-  // Auth
-  isAdmin: false,
-  isLoggedIn: false,
-  login: (password: string) => {
-    if (password === ADMIN_PASSWORD) {
-      const pending = get().pendingAdminView;
-      set({
-        isLoggedIn: true,
-        isAdmin: true,
-        mode: 'admin',
-        adminView: pending || 'dashboard',
-        showLoginDialog: false,
-        pendingAdminView: null,
-      });
-      return true;
-    }
-    return false;
-  },
-  logout: () => {
-    set({
-      isLoggedIn: false,
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      // Auth - Admin
       isAdmin: false,
+      isLoggedIn: false,
+      login: (password: string) => {
+        if (password === ADMIN_PASSWORD) {
+          const pending = get().pendingAdminView;
+          set({
+            isLoggedIn: true,
+            isAdmin: true,
+            mode: 'admin',
+            adminView: pending || 'dashboard',
+            showLoginDialog: false,
+            pendingAdminView: null,
+          });
+          return true;
+        }
+        return false;
+      },
+      logout: () => {
+        set({
+          isLoggedIn: false,
+          isAdmin: false,
+          mode: 'public',
+          adminView: 'dashboard',
+          pendingAdminView: null,
+          showLoginDialog: false,
+        });
+      },
+
+      // Auth - User registration
+      currentUser: null,
+      setCurrentUser: (user) => set({ currentUser: user }),
+      showRegisterDialog: false,
+      setShowRegisterDialog: (show) => set({ showRegisterDialog: show }),
+
+      // Mode
       mode: 'public',
+      setMode: (mode) => set({ mode }),
+
+      // Public navigation
+      currentView: 'home',
+      setCurrentView: (view) => set({ currentView: view }),
+
+      // Admin navigation
       adminView: 'dashboard',
-      pendingAdminView: null,
+      setAdminView: (view) => set({ adminView: view }),
+
+      // Login dialog
       showLoginDialog: false,
-    });
-  },
+      setShowLoginDialog: (show) => set({ showLoginDialog: show }),
+      pendingAdminView: null,
+      setPendingAdminView: (view) => set({ pendingAdminView: view }),
 
-  // Mode
-  mode: 'public',
-  setMode: (mode) => set({ mode }),
+      // Shared state
+      selectedPedidoId: null,
+      setSelectedPedidoId: (id) => set({ selectedPedidoId: id }),
 
-  // Public navigation
-  currentView: 'home',
-  setCurrentView: (view) => set({ currentView: view }),
-
-  // Admin navigation
-  adminView: 'dashboard',
-  setAdminView: (view) => set({ adminView: view }),
-
-  // Login dialog
-  showLoginDialog: false,
-  setShowLoginDialog: (show) => set({ showLoginDialog: show }),
-  pendingAdminView: null,
-  setPendingAdminView: (view) => set({ pendingAdminView: view }),
-
-  // Shared state
-  selectedPedidoId: null,
-  setSelectedPedidoId: (id) => set({ selectedPedidoId: id }),
-
-  // Actions
-  goToPedidoDetail: (id) =>
-    set({ adminView: 'pedido-detail', selectedPedidoId: id }),
-  goToPedidoEdit: (id) =>
-    set({ adminView: 'pedido-edit', selectedPedidoId: id }),
-  goToNuevoPedido: () => {
-    const { isLoggedIn } = get();
-    if (isLoggedIn) {
-      set({ mode: 'admin', adminView: 'pedido-form', selectedPedidoId: null });
-    } else {
-      set({ showLoginDialog: true, pendingAdminView: 'pedido-form' });
+      // Actions
+      goToPedidoDetail: (id) =>
+        set({ adminView: 'pedido-detail', selectedPedidoId: id }),
+      goToPedidoEdit: (id) =>
+        set({ adminView: 'pedido-edit', selectedPedidoId: id }),
+      goToNuevoPedido: () => {
+        const { isLoggedIn } = get();
+        if (isLoggedIn) {
+          set({ mode: 'admin', adminView: 'pedido-form', selectedPedidoId: null });
+        } else {
+          set({ showLoginDialog: true, pendingAdminView: 'pedido-form' });
+        }
+      },
+      goBackToPublic: () =>
+        set({ mode: 'public', adminView: 'dashboard' }),
+      goToAdmin: () => {
+        const { isLoggedIn } = get();
+        if (isLoggedIn) {
+          set({ mode: 'admin', adminView: 'dashboard' });
+        } else {
+          set({ showLoginDialog: true, pendingAdminView: 'dashboard' });
+        }
+      },
+    }),
+    {
+      name: 'chambatina-storage',
+      partialize: (state) => ({
+        currentUser: state.currentUser,
+        isAdmin: state.isAdmin,
+        isLoggedIn: state.isLoggedIn,
+      }),
     }
-  },
-  goBackToPublic: () =>
-    set({ mode: 'public', adminView: 'dashboard' }),
-  goToAdmin: () => {
-    const { isLoggedIn } = get();
-    if (isLoggedIn) {
-      set({ mode: 'admin', adminView: 'dashboard' });
-    } else {
-      set({ showLoginDialog: true, pendingAdminView: 'dashboard' });
-    }
-  },
-}));
+  )
+);
