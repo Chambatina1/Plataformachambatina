@@ -86,12 +86,12 @@ export function Tienda() {
         <p className="text-zinc-500 mt-1">Nuestros productos y servicios con precios actualizados</p>
       </div>
 
-      {/* USA location banner */}
+      {/* USA info banner */}
       <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
         <MapPin className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-amber-900">Chambatina - USA</p>
-          <p className="text-xs text-amber-700 mt-0.5">Si el botón "Comprar" no funciona en tu región, usa <strong>"Llenar Ficha de Compra"</strong> para comprar directamente con nosotros. Ambas opciones te llegan a Chambatina.</p>
+          <p className="text-sm font-semibold text-amber-900">Chambatina - Winter Park, FL, USA</p>
+          <p className="text-xs text-amber-700 mt-0.5">Haz clic en <strong>"Comprar"</strong> para llenar la ficha de compra. Tu pedido llega directo a nuestra oficina en USA.</p>
         </div>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -122,32 +122,13 @@ export function Tienda() {
                         </div>
                         {product.descripcion && <CardDescription className="text-xs line-clamp-2">{product.descripcion}</CardDescription>}
                       </CardHeader>
-                      <CardContent className="pt-0 space-y-2">
-                        {product.tiktokUrl ? (
-                          <a
-                            href={product.tiktokUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
-                          >
-                            <ShoppingCart className="h-4 w-4 mr-1.5" />
-                            Comprar
-                          </a>
-                        ) : (
-                          <a
-                            href={`?comprar=${product.id}`}
-                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
-                          >
-                            <ShoppingCart className="h-4 w-4 mr-1.5" />
-                            Comprar
-                          </a>
-                        )}
+                      <CardContent className="pt-0">
                         <a
                           href={`?comprar=${product.id}`}
-                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200"
+                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
                         >
-                          <ExternalLink className="h-4 w-4" />
-                          Llenar Ficha de Compra
+                          <ShoppingCart className="h-4 w-4 mr-1.5" />
+                          Comprar
                         </a>
                       </CardContent>
                     </Card>

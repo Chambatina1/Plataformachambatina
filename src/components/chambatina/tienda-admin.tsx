@@ -334,9 +334,9 @@ export function TiendaAdmin() {
               <details className="mt-1"><summary className="text-xs text-zinc-400 cursor-pointer hover:text-zinc-600 transition-colors">O pegar URL de imagen...</summary><Input className="mt-1" value={form.imagenUrl} onChange={(e) => setForm({ ...form, imagenUrl: e.target.value })} placeholder="https://ejemplo.com/imagen.jpg" /></details>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Link de Compra Directo</Label>
-              <Input value={form.tiktokUrl} onChange={(e) => setForm({ ...form, tiktokUrl: e.target.value })} placeholder="https://tu-tienda.com/producto/..." />
-              <p className="text-xs text-zinc-400">Link externo del producto (TikTok Shop, etc.)</p>
+              <Label className="text-xs font-medium">Link de Afiliados (TikTok Shop)</Label>
+              <Input value={form.tiktokUrl} onChange={(e) => setForm({ ...form, tiktokUrl: e.target.value })} placeholder="https://www.tiktok.com/..." />
+              <p className="text-xs text-zinc-400">Link comisionable de TikTok. Compártelo por WhatsApp a clientes que puedan verlo (fuera de USA).</p>
             </div>
             {editingId && (
               <div className="space-y-2">
