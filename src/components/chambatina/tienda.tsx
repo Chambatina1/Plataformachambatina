@@ -123,13 +123,13 @@ export function Tienda() {
                         {product.descripcion && <CardDescription className="text-xs line-clamp-2">{product.descripcion}</CardDescription>}
                       </CardHeader>
                       <CardContent className="pt-0">
-                        <a
-                          href={`?comprar=${product.id}`}
+                        <button
+                          onClick={() => handleComprar(product)}
                           className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
                         >
                           <ShoppingCart className="h-4 w-4 mr-1.5" />
                           Comprar
-                        </a>
+                        </button>
                       </CardContent>
                     </Card>
                   );

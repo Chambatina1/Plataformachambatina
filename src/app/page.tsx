@@ -186,26 +186,30 @@ export default function Page() {
 
   // Handle ?comprar=ID query param to auto-open purchase form
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const comprarId = params.get('comprar');
-    if (comprarId) {
-      // Fetch product data and open purchase form
-      fetch('/api/tienda')
-        .then(res => res.json())
-        .then(json => {
-          if (json.ok) {
-            const product = (json.data.products || []).find((p: any) => p.id === parseInt(comprarId));
-            if (product) {
-              goToComprar({ nombre: product.nombre, precio: product.precio, categoria: product.categoria });
-              // Clean URL without reload
-              window.history.replaceState({}, '', window.location.pathname);
+    function checkComprarParam() {
+      const params = new URLSearchParams(window.location.search);
+      const comprarId = params.get('comprar');
+      if (comprarId) {
+        fetch('/api/tienda')
+          .then(res => res.json())
+          .then(json => {
+            if (json.ok) {
+              const product = (json.data.products || []).find((p: any) => p.id === parseInt(comprarId));
+              if (product) {
+                goToComprar({ nombre: product.nombre, precio: product.precio, categoria: product.categoria });
+                window.history.replaceState({}, '', window.location.pathname);
+              }
             }
-          }
-        })
-        .catch(() => {});
+          })
+          .catch(() => {});
+      }
     }
-  }, []);
+    // Run on mount
+    checkComprarParam();
+    // Listen for URL changes (popstate)
+    window.addEventListener('popstate', checkComprarParam);
+    return () => window.removeEventListener('popstate', checkComprarParam);
+  }, [goToComprar]);
 
   const viewKey = mode === 'admin' ? `admin-${adminView}` : `public-${currentView}`;
 
