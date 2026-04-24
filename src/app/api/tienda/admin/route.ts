@@ -3,13 +3,14 @@ import { db } from '@/lib/db';
 import { z } from 'zod';
 
 // ─── Esquemas de validación ─────────────────────────────────────────────
+const optionalUrl = z.string().optional().or(z.literal(''));
 const createSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   descripcion: z.string().optional().or(z.literal('')),
   precio: z.coerce.number().positive('El precio debe ser mayor a 0'),
   categoria: z.string().min(1, 'La categoría es requerida'),
-  tiktokUrl: z.string().url('URL de TikTok inválida').optional().or(z.literal('')),
-  imagenUrl: z.string().url('URL de imagen inválida').optional().or(z.literal('')),
+  tiktokUrl: optionalUrl,
+  imagenUrl: optionalUrl,
   activo: z.boolean().optional().default(true),
   orden: z.number().int().optional().default(0),
 });
@@ -20,8 +21,8 @@ const updateSchema = z.object({
   descripcion: z.string().optional().or(z.literal('')),
   precio: z.coerce.number().positive().optional(),
   categoria: z.string().min(1).optional(),
-  tiktokUrl: z.string().url().optional().or(z.literal('')),
-  imagenUrl: z.string().url().optional().or(z.literal('')),
+  tiktokUrl: optionalUrl,
+  imagenUrl: optionalUrl,
   activo: z.boolean().optional(),
   orden: z.number().int().optional(),
 });

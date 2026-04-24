@@ -123,7 +123,12 @@ export function TiendaAdmin() {
       });
       const json = await res.json();
       if (json.ok) { toast.success(editingId ? 'Producto actualizado' : 'Producto creado'); setDialogOpen(false); loadProducts(); }
-      else { toast.error(json.error || 'Error al guardar'); }
+      else {
+        const errMsg = typeof json.error === 'object' && json.error !== null
+          ? Object.values(json.error).flat().join(', ')
+          : json.error || 'Error al guardar';
+        toast.error(errMsg);
+      }
     } catch { toast.error('Error de conexión'); }
     finally { setSaving(false); }
   };
