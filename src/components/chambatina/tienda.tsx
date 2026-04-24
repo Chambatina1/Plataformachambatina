@@ -9,15 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Truck,
-  Bike,
-  Box,
-  Sun,
-  Zap,
-  Phone,
-  ShoppingCart,
-  ImageIcon,
-  ExternalLink,
+  Truck, Bike, Box, Sun, Zap, Phone, ShoppingCart, ImageIcon, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -35,7 +27,68 @@ interface GroupedProducts {
   [category: string]: Product[];
 }
 
-// Category config with icons and colors
+const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof Truck; color: string; bgColor: string }> = {
+  envios: { label: 'Envíos', icon: Truck, color: 'text-amber-600', bgColor: 'bg-amber-100' },
+  bicicletas: { label: 'Bicicletas', icon: Bike, color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  cajas: { label: 'Cajas', icon: Box, color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  solar: { label: 'Solar', icon: Sun, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+  tiktok: { label: 'TikTok', icon: Zap, color: 'text-pink-600', bgColor: 'bg-pink-100' },
+  general: { label: 'General', icon: ShoppingCart, color: 'text-zinc-600', bgColor: 'bg-zinc-100' },
+};
+
+const DEFAULT_CONFIG = { label: 'General', icon: ShoppingCart, color: 'text-zinc-600', bgColor: 'bg-zinc-100' };
+
+const fadeIn = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+};
+
+export function Tienda() {
+  const { goToNuevoPedido, setCurrentView } = useAppStore();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [grouped, setGrouped] = useState<GroupedProducts>({});
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('envios');
+  const [imgErrors, setImgErrors] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/tienda');
+        const json = await res.json();
+        if (json.ok) {
+          setProducts(json.data.products || []);
+          setGrouped(json.data.group
+cat > src/components/chambatina/tienda.tsx << 'ENDOFFILE'
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useAppStore } from './store';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Truck, Bike, Box, Sun, Zap, Phone, ShoppingCart, ImageIcon, ExternalLink,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Product {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  precio: number;
+  categoria: string;
+  imagenUrl: string | null;
+  tiktokUrl: string | null;
+}
+
+interface GroupedProducts {
+  [category: string]: Product[];
+}
+
 const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof Truck; color: string; bgColor: string }> = {
   envios: { label: 'Envíos', icon: Truck, color: 'text-amber-600', bgColor: 'bg-amber-100' },
   bicicletas: { label: 'Bicicletas', icon: Bike, color: 'text-orange-600', bgColor: 'bg-orange-100' },
@@ -68,11 +121,8 @@ export function Tienda() {
         if (json.ok) {
           setProducts(json.data.products || []);
           setGrouped(json.data.grouped || {});
-          // Set default tab to the first available category
           const categories = Object.keys(json.data.grouped || {});
-          if (categories.length > 0) {
-            setActiveTab(categories[0]);
-          }
+          if (categories.length > 0) setActiveTab(categories[0]);
         }
       } catch {
         toast.error('Error al cargar productos');
@@ -101,7 +151,6 @@ export function Tienda() {
     );
   }
 
-  // No products message
   if (products.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
@@ -124,11 +173,7 @@ export function Tienda() {
   }));
 
   return (
-    <motion.div
-      {...fadeIn}
-      transition={{ duration: 0.4 }}
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-    >
+    <motion.div {...fadeIn} transition={{ duration: 0.4 }} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Tienda</h1>
         <p className="text-zinc-500 mt-1">Nuestros productos y servicios con precios actualizados</p>
@@ -139,11 +184,7 @@ export function Tienda() {
           {tabConfigs.map(({ value, config }) => {
             const Icon = config.icon;
             return (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className="gap-1.5 data-[state=active]:bg-amber-500 data-[state=active]:text-white"
-              >
+              <TabsTrigger key={value} value={value} className="gap-1.5 data-[state=active]:bg-amber-500 data-[state=active]:text-white">
                 <Icon className="h-4 w-4" />
                 {config.label}
               </TabsTrigger>
@@ -151,8 +192,7 @@ export function Tienda() {
           })}
         </TabsList>
 
-        {tabConfigs.map(({ value, config }) => {
-          const Icon = config.icon;
+        {tabConfigs.map(({ value }) => {
           const catProducts = grouped[value] || [];
           return (
             <TabsContent key={value} value={value}>
@@ -160,18 +200,11 @@ export function Tienda() {
                 {catProducts.map((product) => {
                   const hasImage = product.imagenUrl && !imgErrors.has(product.id);
                   const hasTikTok = !!product.tiktokUrl;
-
                   return (
                     <Card key={product.id} className="border-0 shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-                      {/* Product Image */}
                       {hasImage ? (
                         <div className="w-full h-44 relative bg-zinc-100">
-                          <img
-                            src={product.imagenUrl!}
-                            alt={product.nombre}
-                            className="w-full h-full object-cover"
-                            onError={() => handleImageError(product.id)}
-                          />
+                          <img src={product.imagenUrl!} alt={product.nombre} className="w-full h-full object-cover" onError={() => handleImageError(product.id)} />
                         </div>
                       ) : (
                         <div className="w-full h-32 flex items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100">
@@ -180,7 +213,6 @@ export function Tienda() {
                           </div>
                         </div>
                       )}
-
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between gap-2">
                           <CardTitle className="text-lg leading-tight">{product.nombre}</CardTitle>
@@ -194,20 +226,12 @@ export function Tienda() {
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="flex gap-2">
-                          <Button
-                            className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-sm"
-                            onClick={() => goToNuevoPedido()}
-                          >
+                          <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-sm" onClick={() => goToNuevoPedido()}>
                             <ShoppingCart className="h-4 w-4 mr-1.5" />
                             Solicitar
                           </Button>
                           {hasTikTok && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="shrink-0 text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-200"
-                              onClick={() => window.open(product.tiktokUrl!, '_blank')}
-                            >
+                            <Button variant="outline" size="sm" className="shrink-0 text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-200" onClick={() => window.open(product.tiktokUrl!, '_blank')}>
                               <ExternalLink className="h-4 w-4" />
                             </Button>
                           )}
@@ -221,7 +245,6 @@ export function Tienda() {
           );
         })}
       </Tabs>
-
       <div className="md:hidden h-20" />
     </motion.div>
   );
