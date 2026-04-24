@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Truck, Bike, Box, Sun, Zap, ShoppingCart, ImageIcon, ExternalLink } from 'lucide-react';
+import { Truck, Bike, Box, Sun, Zap, ShoppingCart, ImageIcon, ExternalLink, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Product { id: number; nombre: string; descripcion: string | null; precio: number; categoria: string; imagenUrl: string | null; tiktokUrl: string | null; }
@@ -84,6 +84,15 @@ export function Tienda() {
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Tienda</h1>
         <p className="text-zinc-500 mt-1">Nuestros productos y servicios con precios actualizados</p>
+      </div>
+
+      {/* USA location banner */}
+      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+        <MapPin className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-blue-900">Chambatina - USA</p>
+          <p className="text-xs text-blue-700 mt-0.5">Si estás en Estados Unidos, los links externos pueden no estar disponibles en tu región. Usa el botón <strong>"Llenar Ficha de Compra"</strong> para comprar directamente con nosotros.</p>
+        </div>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-zinc-100 p-1 flex-wrap h-auto gap-1">
