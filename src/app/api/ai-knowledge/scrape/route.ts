@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import ZAI from 'z-ai-web-dev-sdk';
+import { chatCompletion, isAIConfigured, getAIConfig, setAIConfig } from '@/lib/ai';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +9,29 @@ export async function POST(request: NextRequest) {
 
     if (!url) {
       return NextResponse.json({ ok: false, error: 'URL es requerida' }, { status: 400 });
+    }
+
+    // Load AI config from database
+    try {
+      const configs = await db.config.findMany({
+        where: { clave: { in: ['ai_provider', 'ai_api_key', 'ai_model'] } },
+      });
+      const configMap: Record<string, string> = {};
+      for (const c of configs) configMap[c.clave] = c.valor;
+      if (configMap.ai_provider || configMap.ai_api_key) {
+        const override: Record<string, any> = {};
+        if (configMap.ai_provider) override.provider = configMap.ai_provider;
+        if (configMap.ai_api_key) override.apiKey = configMap.ai_api_key;
+        if (configMap.ai_model) override.model = configMap.ai_model;
+        setAIConfig(override);
+      }
+    } catch { /* ignore */ }
+
+    if (!isAIConfigured()) {
+      return NextResponse.json(
+        { ok: false, error: 'La IA no está configurada. Agrega una API key de DeepSeek u OpenAI en Config.' },
+        { status: 400 }
+      );
     }
 
     // Fetch the URL content
@@ -20,8 +43,8 @@ export async function POST(request: NextRequest) {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       html = await response.text();
-    } catch (fetchError) {
-      return NextResponse.json({ ok: false, error: `No se pudo acceder a la URL: ${fetchError}` }, { status: 400 });
+    } catch (fetchError: any) {
+      return NextResponse.json({ ok: false, error: `No se pudo acceder a la URL: ${fetchError.message}` }, { status: 400 });
     }
 
     // Extract text content from HTML (basic extraction)
@@ -49,13 +72,13 @@ export async function POST(request: NextRequest) {
         entries: created,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[AI Scrape] Error:', error);
-    return NextResponse.json({ ok: false, error: 'Error al procesar la URL' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: error.message || 'Error al procesar la URL' }, { status: 500 });
   }
 }
 
-function extractTextFromHTML(html: string, url: string): string {
+function extractTextFromHTML(html: string, _url: string): string {
   // Remove script and style tags
   let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
   text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
@@ -94,9 +117,7 @@ function extractTextFromHTML(html: string, url: string): string {
 }
 
 async function generateKnowledgeFromContent(content: string, sourceUrl: string, categoria: string) {
-  const zai = await ZAI.create();
-
-  const completion = await zai.chat.completions.create({
+  const aiResponse = await chatCompletion({
     messages: [
       {
         role: 'system',
@@ -123,11 +144,9 @@ Responde SOLO en formato JSON array, sin markdown, sin texto adicional. Cada obj
     temperature: 0.3,
   });
 
-  const responseText = completion.choices?.[0]?.message?.content || '';
-
   try {
     // Try to parse JSON from response
-    let jsonStr = responseText.trim();
+    let jsonStr = aiResponse.trim();
     // Remove markdown code blocks if present
     if (jsonStr.startsWith('```')) {
       jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');

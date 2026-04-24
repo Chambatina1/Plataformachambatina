@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
-import ZAI from 'z-ai-web-dev-sdk';
+import { chatCompletion, setAIConfig, isAIConfigured } from '@/lib/ai';
 import { BUSINESS_CONTEXT } from '@/lib/chambatina';
 
 // ─── Palabras comunes a excluir al generar keywords ────────────────────
@@ -321,32 +321,47 @@ async function handleTest(body: { pregunta: string }) {
         .join('\n\n');
     }
 
+    // ── Load AI config from database ─────────────────────────────
+    try {
+      const configs = await db.config.findMany({
+        where: { clave: { in: ['ai_provider', 'ai_api_key', 'ai_model'] } },
+      });
+      const configMap: Record<string, string> = {};
+      for (const c of configs) configMap[c.clave] = c.valor;
+      if (configMap.ai_provider || configMap.ai_api_key) {
+        const override: Record<string, any> = {};
+        if (configMap.ai_provider) override.provider = configMap.ai_provider;
+        if (configMap.ai_api_key) override.apiKey = configMap.ai_api_key;
+        if (configMap.ai_model) override.model = configMap.ai_model;
+        setAIConfig(override);
+      }
+    } catch { /* ignore */ }
+
     // ── Llamar a la IA con el contexto ───────────────────────────────
     let aiResponse = '';
-    try {
-      const systemPrompt = `${BUSINESS_CONTEXT}\n\n${
-        knowledgeContext
-          ? `INFORMACIÓN DE LA BASE DE CONOCIMIENTO (usa esta información para responder si es relevante):\n\n${knowledgeContext}\n\nResponde basándote en la información anterior si es aplicable.`
-          : 'No hay información específica en la base de conocimiento para esta pregunta. Responde de forma general.'
-      }`;
+    if (!isAIConfigured()) {
+      aiResponse = 'La IA no está configurada. Agrega una API key de DeepSeek u OpenAI en la sección Config del panel admin.';
+    } else {
+      try {
+        const systemPrompt = `${BUSINESS_CONTEXT}\n\n${
+          knowledgeContext
+            ? `INFORMACIÓN DE LA BASE DE CONOCIMIENTO (usa esta información para responder si es relevante):\n\n${knowledgeContext}\n\nResponde basándote en la información anterior si es aplicable.`
+            : 'No hay información específica en la base de conocimiento para esta pregunta. Responde de forma general.'
+        }`;
 
-      const zai = await ZAI.create();
-      const completion = await zai.chat.completions.create({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: pregunta },
-        ],
-      });
-
-      aiResponse =
-        completion.choices?.[0]?.message?.content ||
-        'No se pudo generar una respuesta.';
-    } catch (aiErr) {
-      console.error('[AI Knowledge Test] Error de IA:', aiErr);
-      aiResponse =
-        matched.length > 0
-          ? matched[0].respuesta
-          : 'Lo siento, no encontré información relevante para tu pregunta.';
+        aiResponse = await chatCompletion({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: pregunta },
+          ],
+        });
+      } catch (aiErr: any) {
+        console.error('[AI Knowledge Test] Error de IA:', aiErr.message);
+        aiResponse =
+          matched.length > 0
+            ? matched[0].respuesta
+            : `Error de IA: ${aiErr.message}. Configura la API key en Config.`;
+      }
     }
 
     return NextResponse.json({

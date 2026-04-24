@@ -15,6 +15,9 @@ const DEFAULTS: Record<string, string> = {
   whatsapp: '',
   instagram: '',
   facebook: '',
+  ai_provider: 'deepseek',
+  ai_api_key: '',
+  ai_model: '',
 };
 
 async function getOrCreate(clave: string): Promise<string> {

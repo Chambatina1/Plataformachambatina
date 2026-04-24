@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { BUSINESS_CONTEXT, calcularEnvio, PRECIOS_POR_LIBRA, CARGO_EQUIPO } from '@/lib/chambatina';
-import ZAI from 'z-ai-web-dev-sdk';
+import { BUSINESS_CONTEXT, calcularEnvio } from '@/lib/chambatina';
+import { chatCompletion, getAIConfig, isAIConfigured } from '@/lib/ai';
 
 // Config defaults
 const CONFIG_DEFAULTS: Record<string, string> = {
@@ -17,6 +17,9 @@ const CONFIG_DEFAULTS: Record<string, string> = {
   whatsapp: '',
   instagram: '',
   facebook: '',
+  ai_provider: 'deepseek',
+  ai_api_key: '',
+  ai_model: '',
 };
 
 async function getConfig(keys: string[]): Promise<Record<string, string>> {
@@ -155,6 +158,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Mensaje y sessionId son requeridos' }, { status: 400 });
     }
 
+    // Load AI config from database and apply it
+    const aiConfig = await getConfig(['ai_provider', 'ai_api_key', 'ai_model']);
+    if (aiConfig.ai_provider || aiConfig.ai_api_key) {
+      const { setAIConfig } = await import('@/lib/ai');
+      const configOverride: Record<string, any> = {};
+      if (aiConfig.ai_provider) configOverride.provider = aiConfig.ai_provider;
+      if (aiConfig.ai_api_key) configOverride.apiKey = aiConfig.ai_api_key;
+      if (aiConfig.ai_model) configOverride.model = aiConfig.ai_model;
+      setAIConfig(configOverride);
+    }
+
+    // Check if AI is configured
+    if (!isAIConfigured()) {
+      // Save a helpful message and return
+      await db.chatMessage.create({
+        data: { sessionId, role: 'user', content: mensaje },
+      });
+
+      const errorMsg = 'La IA no está configurada aún. El administrador necesita agregar una API key en **Config** del panel de administración.\n\nPuedes usar:\n- **DeepSeek** (recomendado, muy económico): Obtén tu key en platform.deepseek.com\n- **OpenAI** (ChatGPT): Obtén tu key en platform.openai.com\n\nMientras tanto, si necesitas información urgente, puedes llamarnos al **786-942-6904** (Geo) o **786-784-6421** (Adriana).';
+
+      await db.chatMessage.create({
+        data: { sessionId, role: 'assistant', content: errorMsg },
+      });
+
+      return NextResponse.json({ ok: true, respuesta: errorMsg });
+    }
+
     // Save user message
     await db.chatMessage.create({
       data: { sessionId, role: 'user', content: mensaje },
@@ -184,20 +214,19 @@ export async function POST(request: NextRequest) {
     // Call AI
     let respuesta = '';
     try {
-      const zai = await ZAI.create();
-      const completion = await zai.chat.completions.create({
+      respuesta = await chatCompletion({
         messages,
         temperature: 0.7,
       });
-      respuesta = completion.choices?.[0]?.message?.content || 'Lo siento, no pude generar una respuesta. ¿Podrías reformular tu pregunta?';
-    } catch (aiError) {
-      console.error('AI Error:', aiError);
+    } catch (aiError: any) {
+      console.error('[Chat AI] Error:', aiError.message);
+
       // Fallback: use structured data if available
       if (structuredData.peso && structuredData.calculo) {
         const c = structuredData.calculo;
-        respuesta = `💰 **Cálculo de envío:**\n\n- Peso: ${c.peso} lb\n- Total: $${c.total.toFixed(2)}\n\n¿Necesitas más información?`;
+        respuesta = `**Cálculo de envío:**\n\n- Peso: ${c.peso} lb\n- Tipo: ${c.tipo}\n- Total: **$${c.total.toFixed(2)}**\n\n¿Necesitas más información? Llámanos al **786-942-6904** (Geo) o **786-784-6421** (Adriana).`;
       } else {
-        respuesta = 'Lo siento, tuve un problema temporal. ¿Podrías intentarlo de nuevo?\n\nSi necesitas información urgente, puedes llamarnos al **786-942-6904** (Geo) o **786-784-6421** (Adriana).';
+        respuesta = `Tuve un problema temporal con el servicio de IA. Por favor intenta de nuevo en unos segundos.\n\nSi necesitas información urgente, puedes llamarnos al **786-942-6904** (Geo) o **786-784-6421** (Adriana).\n\nError: ${aiError.message}`;
       }
     }
 
