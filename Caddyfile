@@ -13,6 +13,10 @@
 	}
 
 	handle {
+		# Permitir requests con body grande (hasta 20MB para uploads de imágenes)
+		request_body {
+			max_size 20MB
+		}
 		reverse_proxy localhost:3000 {
 			header_up Host {host}
 			header_up X-Forwarded-For {remote_host}

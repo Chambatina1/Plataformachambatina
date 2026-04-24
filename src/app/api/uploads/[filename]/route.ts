@@ -22,25 +22,27 @@ export async function GET(
       return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
     }
 
-    // Look in data/uploads/ first, then fallback to public/uploads/
-    const dataDir = path.join(process.cwd(), 'data', 'uploads', filename);
-    const publicDir = path.join(process.cwd(), 'public', 'uploads', filename);
+    // Search for file in multiple locations
+    const searchPaths = [
+      path.join(process.cwd(), 'data', 'uploads', filename),
+      path.join(process.cwd(), 'public', 'uploads', filename),
+      path.join(process.cwd(), 'upload', filename),
+    ];
 
     let filePath: string | null = null;
-    try {
-      await stat(dataDir);
-      filePath = dataDir;
-    } catch {
-      // data/uploads/ not found, try public/uploads/
+    for (const filePathCandidate of searchPaths) {
+      try {
+        await stat(filePathCandidate);
+        filePath = filePathCandidate;
+        break;
+      } catch {
+        // File not found at this location, try next
+      }
     }
 
     if (!filePath) {
-      try {
-        await stat(publicDir);
-        filePath = publicDir;
-      } catch {
-        return NextResponse.json({ error: 'File not found' }, { status: 404 });
-      }
+      console.warn(`[Uploads] File not found: ${filename} (searched in data/uploads, public/uploads, upload)`);
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
     const fileBuffer = await readFile(filePath);
@@ -61,6 +63,7 @@ export async function GET(
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=31536000, immutable',
         'Content-Length': fileBuffer.length.toString(),
+        'Access-Control-Allow-Origin': '*',
       },
     });
   } catch (error) {

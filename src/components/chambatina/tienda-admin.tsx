@@ -103,18 +103,47 @@ export function TiendaAdmin() {
 
   const handleImageUpload = async (file: File) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) { toast.error('Tipo no permitido. Usa JPG, PNG, GIF o WebP.'); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error('Imagen muy grande. Máximo 5MB.'); return; }
+    if (!allowedTypes.includes(file.type)) { toast.error(`Tipo no permitido (${file.type}). Usa JPG, PNG, GIF o WebP.`); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error(`Imagen muy grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo 10MB.`); return; }
     setUploadingImage(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
+
+      // Handle HTTP errors
+      if (!res.ok) {
+        let errorMsg = `Error del servidor (${res.status})`;
+        try {
+          const errorJson = await res.json();
+          errorMsg = errorJson.error || errorMsg;
+        } catch { /* response not JSON */ }
+
+        if (res.status === 413) {
+          toast.error('Imagen demasiado grande para el servidor. Reduce el tamaño e intenta de nuevo.');
+        } else if (res.status === 408) {
+          toast.error('La subida tardó demasiado. Verifica tu conexión e intenta de nuevo.');
+        } else {
+          toast.error(errorMsg);
+        }
+        console.error('[Upload] Server error:', res.status, errorMsg);
+        return;
+      }
+
       const json = await res.json();
-      if (json.ok && json.data?.url) { setForm((prev) => ({ ...prev, imagenUrl: json.data.url })); toast.success('Imagen subida'); }
-      else { toast.error(json.error || 'Error al subir imagen'); }
-    } catch { toast.error('Error de conexión'); }
-    finally { setUploadingImage(false); }
+      if (json.ok && json.data?.url) {
+        setForm((prev) => ({ ...prev, imagenUrl: json.data.url }));
+        toast.success('Imagen subida correctamente');
+        console.log('[Upload] Success:', json.data);
+      } else {
+        toast.error(json.error || 'Error al subir imagen');
+        console.error('[Upload] API error:', json);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
+      console.error('[Upload] Connection error:', errorMsg);
+      toast.error(`Error de conexión: ${errorMsg}`);
+    } finally { setUploadingImage(false); }
   };
 
   const handleSave = async () => {
@@ -297,7 +326,7 @@ export function TiendaAdmin() {
                   ) : (
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center"><Upload className="h-5 w-5 text-amber-600" /></div>
-                      <div><p className="text-sm font-medium text-zinc-700">Haz clic o arrastra una imagen</p><p className="text-xs text-zinc-400 mt-0.5">JPG, PNG, GIF o WebP (máx. 5MB)</p></div>
+                      <div><p className="text-sm font-medium text-zinc-700">Haz clic o arrastra una imagen</p><p className="text-xs text-zinc-400 mt-0.5">JPG, PNG, GIF o WebP (máx. 10MB)</p></div>
                     </div>
                   )}
                 </div>
