@@ -1,92 +1,31 @@
 import { NextResponse } from 'next/server';
-import { BICICLETAS, CAJAS, PRECIOS_POR_LIBRA, CARGO_EQUIPO } from '@/lib/chambatina';
+import { db } from '@/lib/db';
 
-// GET /api/tienda - Returns all products/services with prices
+// GET /api/tienda - Returns active products grouped by category from the database
 export async function GET() {
   try {
-    const productos = {
-      envios: {
-        nombre: 'Envíos Internacionales',
-        descripcion: 'Servicio de envío de paquetes con diferentes opciones',
-        items: [
-          {
-            id: 'equipo',
-            nombre: 'Envío por Equipo',
-            descripcion: 'Lleva tu paquete a nuestra oficina',
-            precio: PRECIOS_POR_LIBRA.equipo,
-            unidad: 'por libra',
-            cargoAdicional: `+$${CARGO_EQUIPO} cargo de equipo`,
-            formula: `(Peso × $${PRECIOS_POR_LIBRA.equipo}) + $${CARGO_EQUIPO}`,
-          },
-          {
-            id: 'recogida',
-            nombre: 'Recogida a Domicilio',
-            descripcion: 'Recogemos tu paquete en tu casa',
-            precio: PRECIOS_POR_LIBRA.recogida,
-            unidad: 'por libra',
-            cargoAdicional: null,
-            formula: `Peso × $${PRECIOS_POR_LIBRA.recogida}`,
-          },
-          {
-            id: 'tiktok',
-            nombre: 'Compras TikTok',
-            descripcion: 'Precio especial para compras desde TikTok',
-            precio: PRECIOS_POR_LIBRA.tiktok,
-            unidad: 'por libra',
-            cargoAdicional: null,
-            formula: `Peso × $${PRECIOS_POR_LIBRA.tiktok}`,
-          },
-        ],
-      },
-      bicicletas: {
-        nombre: 'Bicicletas',
-        descripcion: 'Envío de bicicletas internacional',
-        items: BICICLETAS.map((b, i) => ({
-          id: b.tipo,
-          nombre: b.descripcion,
-          descripcion: b.descripcion,
-          precio: b.precio,
-          unidad: 'precio fijo',
-          cargoAdicional: null,
-        })),
-      },
-      cajas: {
-        nombre: 'Cajas',
-        descripcion: 'Cajas de envío con precio fijo según tamaño',
-        items: CAJAS.map((c, i) => ({
-          id: `caja_${i}`,
-          nombre: c.nombre,
-          descripcion: `${c.dimensiones} - hasta ${c.pesoMaximo} lb`,
-          precio: c.precio,
-          unidad: 'precio fijo',
-          cargoAdicional: null,
-        })),
-      },
-      solar: {
-        nombre: 'Sistemas Solares',
-        descripcion: 'Orientación y productos de energía solar EcoFlow',
-        items: [
-          {
-            id: 'solar_consultoria',
-            nombre: 'Consultoría Solar',
-            descripcion: 'Orientación personalizada sobre sistemas de energía solar',
-            precio: 0,
-            unidad: 'gratuito',
-            cargoAdicional: null,
-          },
-          {
-            id: 'ecoflow',
-            nombre: 'EcoFlow',
-            descripcion: 'Sistemas de energía portátil EcoFlow - consulte disponibilidad y precios',
-            precio: 0,
-            unidad: 'bajo consulta',
-            cargoAdicional: null,
-          },
-        ],
-      },
-    };
+    // Fetch all active products from the database, ordered by category then sort order
+    const products = await db.tiendaProduct.findMany({
+      where: { activo: true },
+      orderBy: [{ orden: 'asc' }, { createdAt: 'desc' }],
+    });
 
-    return NextResponse.json({ ok: true, data: productos });
+    // Group products by category
+    const grouped: Record<string, typeof products> = {};
+    for (const product of products) {
+      const cat = product.categoria || 'general';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(product);
+    }
+
+    // Return all products and the grouped version for convenience
+    return NextResponse.json({
+      ok: true,
+      data: {
+        products,
+        grouped,
+      },
+    });
   } catch (error) {
     console.error('Error fetching tienda:', error);
     return NextResponse.json({ ok: false, error: 'Error al obtener productos' }, { status: 500 });
