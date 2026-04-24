@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, copyFile } from 'fs/promises';
 import path from 'path';
 
-// POST /api/upload - Uploads an image file to public/uploads/
+// POST /api/upload - Uploads an image file to data/uploads/
+// Files are served via /api/uploads/[filename] to work with standalone output mode
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -40,16 +41,23 @@ export async function POST(request: NextRequest) {
     const ext = file.name.split('.').pop() || 'jpg';
     const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
 
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    await mkdir(uploadsDir, { recursive: true });
+    // Save to data/uploads/ (persistent directory, works with standalone mode)
+    const dataDir = path.join(process.cwd(), 'data', 'uploads');
+    await mkdir(dataDir, { recursive: true });
+    const dataPath = path.join(dataDir, uniqueName);
+    await writeFile(dataPath, buffer);
 
-    // Write file
-    const filePath = path.join(uploadsDir, uniqueName);
-    await writeFile(filePath, buffer);
+    // Also save to public/uploads/ for development mode and fallback
+    try {
+      const publicDir = path.join(process.cwd(), 'public', 'uploads');
+      await mkdir(publicDir, { recursive: true });
+      await writeFile(path.join(publicDir, uniqueName), buffer);
+    } catch {
+      // public/ might be read-only in some deployments, that's fine
+    }
 
-    // Return the public URL
-    const url = `/uploads/${uniqueName}`;
+    // Return URL via our API route (works in both standalone and dev mode)
+    const url = `/api/uploads/${uniqueName}`;
 
     return NextResponse.json({
       ok: true,
