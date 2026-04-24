@@ -25,7 +25,7 @@ const DEFAULT_CONFIG = { label: 'General', icon: ShoppingCart, color: 'text-zinc
 const fadeIn = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
 export function Tienda() {
-  const { goToNuevoPedido } = useAppStore();
+  const { goToNuevoPedido, goToComprar } = useAppStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [grouped, setGrouped] = useState<GroupedProducts>({});
   const [loading, setLoading] = useState(true);
@@ -50,6 +50,14 @@ export function Tienda() {
   }, []);
 
   const handleImageError = (productId: number) => { setImgErrors((prev) => new Set(prev).add(productId)); };
+
+  const handleComprar = (product: Product) => {
+    goToComprar({
+      nombre: product.nombre,
+      precio: product.precio,
+      categoria: product.categoria,
+    });
+  };
 
   if (loading) return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -107,7 +115,7 @@ export function Tienda() {
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="flex gap-2">
-                          <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-sm" onClick={() => goToNuevoPedido()}><ShoppingCart className="h-4 w-4 mr-1.5" />Solicitar</Button>
+                          <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-sm" onClick={() => handleComprar(product)}><ShoppingCart className="h-4 w-4 mr-1.5" />Comprar</Button>
                           {product.tiktokUrl && <Button variant="outline" size="sm" className="shrink-0 text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-200" onClick={() => window.open(product.tiktokUrl!, '_blank')}><ExternalLink className="h-4 w-4" /></Button>}
                         </div>
                       </CardContent>

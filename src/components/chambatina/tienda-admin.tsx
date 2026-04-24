@@ -206,7 +206,7 @@ export function TiendaAdmin() {
           { label: 'Total Productos', value: products.length, bg: 'bg-amber-50' },
           { label: 'Activos', value: products.filter((p) => p.activo).length, bg: 'bg-emerald-50' },
           { label: 'Inactivos', value: products.filter((p) => !p.activo).length, bg: 'bg-zinc-50' },
-          { label: 'Con TikTok', value: products.filter((p) => p.tiktokUrl).length, bg: 'bg-pink-50' },
+          { label: 'Con Link de Compra', value: products.filter((p) => p.tiktokUrl).length, bg: 'bg-amber-50' },
         ].map((stat) => (
           <Card key={stat.label} className="border-0 shadow-sm">
             <CardContent className={`p-3 sm:p-4 ${stat.bg} rounded-xl`}>
@@ -240,7 +240,7 @@ export function TiendaAdmin() {
                     <TableHead>Nombre</TableHead>
                     <TableHead className="hidden sm:table-cell">Categoría</TableHead>
                     <TableHead className="hidden md:table-cell">Precio</TableHead>
-                    <TableHead className="hidden lg:table-cell">TikTok</TableHead>
+                    <TableHead className="hidden lg:table-cell">Link Compra</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -267,7 +267,7 @@ export function TiendaAdmin() {
                         <TableCell className="hidden md:table-cell text-sm font-medium">${product.precio.toFixed(2)}</TableCell>
                         <TableCell className="hidden lg:table-cell">
                           {product.tiktokUrl ? (
-                            <a href={product.tiktokUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-pink-600 hover:text-pink-700"><ExternalLink className="h-3 w-3" />TikTok</a>
+                            <a href={product.tiktokUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"><ExternalLink className="h-3 w-3" />Ver Link</a>
                           ) : <span className="text-xs text-zinc-300">—</span>}
                         </TableCell>
                         <TableCell><Switch checked={product.activo} onCheckedChange={() => toggleActive(product)} /></TableCell>
@@ -333,7 +333,7 @@ export function TiendaAdmin() {
               )}
               <details className="mt-1"><summary className="text-xs text-zinc-400 cursor-pointer hover:text-zinc-600 transition-colors">O pegar URL de imagen...</summary><Input className="mt-1" value={form.imagenUrl} onChange={(e) => setForm({ ...form, imagenUrl: e.target.value })} placeholder="https://ejemplo.com/imagen.jpg" /></details>
             </div>
-            <div className="space-y-2"><Label className="text-xs font-medium">URL de TikTok</Label><Input value={form.tiktokUrl} onChange={(e) => setForm({ ...form, tiktokUrl: e.target.value })} placeholder="https://www.tiktok.com/@usuario/video/..." /></div>
+            <div className="space-y-2"><Label className="text-xs font-medium">Link de Compra Directo</Label><Input value={form.tiktokUrl} onChange={(e) => setForm({ ...form, tiktokUrl: e.target.value })} placeholder="https://tu-tienda.com/producto/..." /></div>
             <div className="flex items-center gap-3 pt-2"><Switch checked={form.activo} onCheckedChange={(val) => setForm({ ...form, activo: val })} /><Label className="text-sm">Producto activo</Label></div>
           </div>
           <div className="flex justify-end gap-2 mt-4">

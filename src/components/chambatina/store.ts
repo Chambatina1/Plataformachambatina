@@ -13,6 +13,12 @@ interface UserData {
   direccion?: string;
 }
 
+interface ProductPreview {
+  nombre: string;
+  precio: number;
+  categoria: string;
+}
+
 interface AppState {
   // Auth - Admin
   isAdmin: boolean;
@@ -48,10 +54,15 @@ interface AppState {
   selectedPedidoId: number | null;
   setSelectedPedidoId: (id: number | null) => void;
 
+  // Pre-fill purchase form from store
+  selectedProduct: ProductPreview | null;
+  setSelectedProduct: (product: ProductPreview | null) => void;
+
   // Actions
   goToPedidoDetail: (id: number) => void;
   goToPedidoEdit: (id: number) => void;
   goToNuevoPedido: () => void;
+  goToComprar: (product: ProductPreview) => void;
   goBackToPublic: () => void;
   goToAdmin: () => void;
 }
@@ -134,15 +145,29 @@ export const useAppStore = create<AppState>()(
       selectedPedidoId: null,
       setSelectedPedidoId: (id) => set({ selectedPedidoId: id }),
 
+      // Pre-fill purchase form from store
+      selectedProduct: null,
+      setSelectedProduct: (product) => set({ selectedProduct: product }),
+
       // Actions
       goToPedidoDetail: (id) =>
         set({ adminView: 'pedido-detail', selectedPedidoId: id }),
       goToPedidoEdit: (id) =>
         set({ adminView: 'pedido-edit', selectedPedidoId: id }),
       goToNuevoPedido: () => {
+        set({ selectedProduct: null });
         const currentMode = get().mode;
         if (currentMode === 'admin') {
           set({ adminView: 'pedido-form', selectedPedidoId: null });
+        } else {
+          set({ currentView: 'pedido-public' });
+        }
+      },
+      goToComprar: (product) => {
+        set({ selectedProduct: product, selectedPedidoId: null });
+        const currentMode = get().mode;
+        if (currentMode === 'admin') {
+          set({ adminView: 'pedido-form' });
         } else {
           set({ currentView: 'pedido-public' });
         }

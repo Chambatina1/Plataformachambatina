@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Save, Loader2, ShoppingCart, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PedidoData {
@@ -37,8 +38,10 @@ const defaultData: PedidoData = {
   notas: '',
 };
 
+const CHAMBATINA_ADDRESS = '7523 Aloma Ave, Winter Park, FL 32792, Suite 112';
+
 export function PedidoForm() {
-  const { selectedPedidoId, setAdminView, adminView, mode, setCurrentView } = useAppStore();
+  const { selectedPedidoId, selectedProduct, setAdminView, adminView, mode, setCurrentView, setSelectedProduct } = useAppStore();
   const isEdit = mode === 'admin' && adminView === 'pedido-edit';
   const isPublic = mode === 'public';
   const [data, setData] = useState<PedidoData>(defaultData);
@@ -69,8 +72,15 @@ export function PedidoForm() {
         })
         .catch(() => toast.error('Error al cargar pedido'))
         .finally(() => setLoading(false));
+    } else if (selectedProduct) {
+      // Pre-fill form with product data from store
+      setData({
+        ...defaultData,
+        producto: `${selectedProduct.nombre} - $${selectedProduct.precio.toFixed(2)}`,
+        notas: `Enviar equipo a: ${CHAMBATINA_ADDRESS}`,
+      });
     }
-  }, [isEdit, selectedPedidoId]);
+  }, [isEdit, selectedPedidoId, selectedProduct]);
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof PedidoData, string>> = {};
@@ -99,6 +109,7 @@ export function PedidoForm() {
       const json = await res.json();
       if (json.ok) {
         toast.success(isEdit ? 'Pedido actualizado' : 'Pedido creado correctamente');
+        setSelectedProduct(null);
         if (isPublic) {
           setCurrentView('home');
         } else {
@@ -116,6 +127,12 @@ export function PedidoForm() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCancel = () => {
+    setSelectedProduct(null);
+    if (isPublic) setCurrentView('home');
+    else setAdminView('pedidos');
   };
 
   const updateField = (field: keyof PedidoData, value: string) => {
@@ -144,10 +161,10 @@ export function PedidoForm() {
       className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
     >
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => isPublic ? setCurrentView('home') : setAdminView('pedidos')}>
+        <Button variant="ghost" size="icon" onClick={handleCancel}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-zinc-900">
             {isEdit ? `Editar Pedido #${selectedPedidoId}` : 'Nuevo Envío'}
           </h1>
@@ -155,7 +172,40 @@ export function PedidoForm() {
             {isEdit ? 'Modifica los datos del pedido' : 'Completa el formulario para crear un nuevo envío'}
           </p>
         </div>
+        {selectedProduct && !isEdit && (
+          <Badge className="bg-amber-100 text-amber-700 border border-amber-200 shrink-0">
+            <ShoppingCart className="h-3 w-3 mr-1" />
+            Comprando: {selectedProduct.nombre}
+          </Badge>
+        )}
       </div>
+
+      {/* Product info banner when buying from store */}
+      {selectedProduct && !isEdit && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
+            <CardContent className="p-4 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                <ShoppingCart className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-amber-900 text-sm">{selectedProduct.nombre}</p>
+                <p className="text-amber-700 text-sm font-bold">${selectedProduct.precio.toFixed(2)}</p>
+                <div className="flex items-start gap-1.5 mt-2">
+                  <MapPin className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-amber-600 leading-relaxed">
+                    Enviar equipo a: {CHAMBATINA_ADDRESS}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       <Card className="border-0 shadow-md">
         <CardContent className="p-6">
@@ -292,6 +342,12 @@ export function PedidoForm() {
                   placeholder="Instrucciones especiales, fragilidad, etc."
                   rows={3}
                 />
+                {selectedProduct && !isEdit && (
+                  <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    La dirección de Chambatina se incluye automáticamente como nota de envío
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -309,7 +365,7 @@ export function PedidoForm() {
               )}
               {isEdit ? 'Actualizar Pedido' : 'Crear Pedido'}
             </Button>
-            <Button variant="outline" onClick={() => isPublic ? setCurrentView('home') : setAdminView('pedidos')}>
+            <Button variant="outline" onClick={handleCancel}>
               Cancelar
             </Button>
           </div>
@@ -320,5 +376,4 @@ export function PedidoForm() {
     </motion.div>
   );
 }
-
 
