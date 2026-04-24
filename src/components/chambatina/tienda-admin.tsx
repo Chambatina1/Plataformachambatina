@@ -54,6 +54,14 @@ const EMPTY_FORM: ProductForm = {
   tiktokUrl: '', imagenUrl: '', activo: true, orden: '0',
 };
 
+function safeErrorMessage(err: unknown): string {
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object' && err !== null) {
+    try { return Object.values(err as Record<string, unknown>).flat().map(String).join(', '); } catch { /* fall through */ }
+  }
+  return 'Error desconocido';
+}
+
 export function TiendaAdmin() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +81,7 @@ export function TiendaAdmin() {
       const res = await fetch('/api/tienda/admin');
       const json = await res.json();
       if (json.ok) setProducts(json.data);
-      else toast.error(json.error || 'Error al cargar productos');
+      else toast.error(safeErrorMessage(json.error || 'Error al cargar productos'));
     } catch { toast.error('Error de conexión'); }
     finally { setLoading(false); }
   }, []);
@@ -123,12 +131,7 @@ export function TiendaAdmin() {
       });
       const json = await res.json();
       if (json.ok) { toast.success(editingId ? 'Producto actualizado' : 'Producto creado'); setDialogOpen(false); loadProducts(); }
-      else {
-        const errMsg = typeof json.error === 'object' && json.error !== null
-          ? Object.values(json.error).flat().join(', ')
-          : json.error || 'Error al guardar';
-        toast.error(errMsg);
-      }
+      else { toast.error(safeErrorMessage(json.error || 'Error al guardar')); }
     } catch { toast.error('Error de conexión'); }
     finally { setSaving(false); }
   };
@@ -140,7 +143,7 @@ export function TiendaAdmin() {
       const res = await fetch(`/api/tienda/admin?id=${deleteId}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.ok) { toast.success('Producto eliminado'); setDeleteId(null); loadProducts(); }
-      else { toast.error(json.error || 'Error al eliminar'); }
+      else { toast.error(safeErrorMessage(json.error || 'Error al eliminar')); }
     } catch { toast.error('Error de conexión'); }
     finally { setDeleting(false); }
   };
