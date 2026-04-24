@@ -57,6 +57,22 @@ interface AppState {
 }
 
 const ADMIN_PASSWORD = 'chambatina2024';
+const STORAGE_KEY = 'chambatina-storage';
+
+// Safety: clear corrupted localStorage on load
+if (typeof window !== 'undefined') {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || !('state' in parsed)) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  } catch {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  }
+}
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -143,12 +159,33 @@ export const useAppStore = create<AppState>()(
       },
     }),
     {
-      name: 'chambatina-storage',
+      name: STORAGE_KEY,
       partialize: (state) => ({
         currentUser: state.currentUser,
         isAdmin: state.isAdmin,
         isLoggedIn: state.isLoggedIn,
       }),
+      storage: {
+        getItem: (name) => {
+          try {
+            const str = localStorage.getItem(name);
+            if (!str) return null;
+            return JSON.parse(str);
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch { /* storage full or unavailable */ }
+        },
+        removeItem: (name) => {
+          try {
+            localStorage.removeItem(name);
+          } catch { /* ignore */ }
+        },
+      },
     }
   )
 );
