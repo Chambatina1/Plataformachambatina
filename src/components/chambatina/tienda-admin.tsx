@@ -333,7 +333,24 @@ export function TiendaAdmin() {
               )}
               <details className="mt-1"><summary className="text-xs text-zinc-400 cursor-pointer hover:text-zinc-600 transition-colors">O pegar URL de imagen...</summary><Input className="mt-1" value={form.imagenUrl} onChange={(e) => setForm({ ...form, imagenUrl: e.target.value })} placeholder="https://ejemplo.com/imagen.jpg" /></details>
             </div>
-            <div className="space-y-2"><Label className="text-xs font-medium">Link de Compra Directo</Label><Input value={form.tiktokUrl} onChange={(e) => setForm({ ...form, tiktokUrl: e.target.value })} placeholder="https://tu-tienda.com/producto/..." /></div>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Link de Compra Directo</Label>
+              <Input value={form.tiktokUrl} onChange={(e) => setForm({ ...form, tiktokUrl: e.target.value })} placeholder="https://tu-tienda.com/producto/..." />
+              <p className="text-xs text-zinc-400">Link externo del producto (TikTok Shop, etc.)</p>
+            </div>
+            {editingId && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Link de Compra Chambatina</Label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-zinc-100 border rounded-lg px-3 py-2 text-zinc-700 overflow-x-auto">{typeof window !== 'undefined' ? `${window.location.origin}?comprar=${editingId}` : `?comprar=${editingId}`}</code>
+                  <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => {
+                    const link = `${window.location.origin}?comprar=${editingId}`;
+                    navigator.clipboard.writeText(link).then(() => toast.success('Link copiado'));
+                  }}>Copiar</Button>
+                </div>
+                <p className="text-xs text-zinc-400">Este link abre la ficha de compra pre-llenada. Funciona en todas las regiones.</p>
+              </div>
+            )}
             <div className="flex items-center gap-3 pt-2"><Switch checked={form.activo} onCheckedChange={(val) => setForm({ ...form, activo: val })} /><Label className="text-sm">Producto activo</Label></div>
           </div>
           <div className="flex justify-end gap-2 mt-4">

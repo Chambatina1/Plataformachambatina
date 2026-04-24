@@ -179,8 +179,33 @@ export default function Page() {
   const mode = useAppStore((s) => s.mode);
   const currentView = useAppStore((s) => s.currentView);
   const adminView = useAppStore((s) => s.adminView);
+  const goToComprar = useAppStore((s) => s.goToComprar);
+  const setCurrentView = useAppStore((s) => s.setCurrentView);
   const [hasError, setHasError] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Handle ?comprar=ID query param to auto-open purchase form
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const comprarId = params.get('comprar');
+    if (comprarId) {
+      // Fetch product data and open purchase form
+      fetch('/api/tienda')
+        .then(res => res.json())
+        .then(json => {
+          if (json.ok) {
+            const product = (json.data.products || []).find((p: any) => p.id === parseInt(comprarId));
+            if (product) {
+              goToComprar({ nombre: product.nombre, precio: product.precio, categoria: product.categoria });
+              // Clean URL without reload
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   const viewKey = mode === 'admin' ? `admin-${adminView}` : `public-${currentView}`;
 

@@ -131,13 +131,16 @@ export function Tienda() {
                             className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
                           >
                             <ExternalLink className="h-4 w-4" />
-                            Ver Link del Equipo
+                            Link del Equipo
                           </a>
                         )}
-                        <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white text-sm" onClick={() => handleComprar(product)}>
+                        <a
+                          href={`?comprar=${product.id}`}
+                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
+                        >
                           <ShoppingCart className="h-4 w-4 mr-1.5" />
-                          {product.tiktokUrl ? 'Llenar Ficha de Compra' : 'Comprar'}
-                        </Button>
+                          Comprar Ahora
+                        </a>
                       </CardContent>
                     </Card>
                   );
