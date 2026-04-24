@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { login, getAllReservations, mapEstado, clearSession } from '@/lib/solvedcargo';
+import { login, getAllReservations, mapEstado, clearSession, mapRowToTracking } from '@/lib/solvedcargo';
 
 // GET /api/solvedcargo - Fetch all reservations from SolvedCargo
 export async function GET(request: NextRequest) {
@@ -9,21 +9,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'No se pudo conectar con SolvedCargo. Verifique las credenciales.' }, { status: 503 });
     }
 
-    const reservations = await getAllReservations(session);
+    const rows = await getAllReservations(session);
 
     // Map SolvedCargo data to our format
-    const mapped = reservations.map((r: any) => ({
-      cpk: r.hawb || r.HAWB || r.cpk || '',
-      fecha: r.fecha || r.date || r.Fecha || null,
-      estado: mapEstado(r.estado || r.Estado || r.status || ''),
-      descripcion: r.mercancia || r.mercancías || r.Mercancias || r.description || null,
-      embarcador: r.embarcador || r.Embarcador || r.shipper || null,
-      consignatario: r.consignatario || r.Consignatario || r.consignee || null,
-      carnetPrincipal: r.carnet || null,
-      manifiesto: r.manifiesto || r.manifest || null,
-      peso: r.peso || r.weight || null,
-      _source: 'solvedcargo',
-    }));
+    const mapped = rows.map(mapRowToTracking).filter(Boolean);
 
     return NextResponse.json({
       ok: true,
@@ -49,22 +38,22 @@ export async function POST(request: NextRequest) {
     const { db } = await import('@/lib/db');
     const { normalizarCPK } = await import('@/lib/chambatina');
 
-    const reservations = await getAllReservations(session);
+    const rows = await getAllReservations(session);
     let synced = 0;
     let created = 0;
     let updated = 0;
 
-    for (const r of reservations) {
-      const cpkRaw = r.hawb || r.HAWB || r.cpk || '';
-      if (!cpkRaw) continue;
+    for (const row of rows) {
+      const item = mapRowToTracking(row);
+      if (!item) continue;
 
-      const cpk = normalizarCPK(cpkRaw);
-      const estado = mapEstado(r.estado || r.Estado || r.status || '');
-      const fecha = r.fecha || r.date || r.Fecha || null;
-      const descripcion = r.mercancia || r.mercancías || r.Mercancias || null;
-      const embarcador = r.embarcador || r.Embarcador || null;
-      const consignatario = r.consignatario || r.Consignatario || null;
-      const carnetPrincipal = r.carnet || null;
+      const cpk = normalizarCPK(item.cpk);
+      const estado = mapEstado(item.estado || '');
+      const fecha = item.fecha;
+      const descripcion = item.descripcion;
+      const embarcador = item.embarcador;
+      const consignatario = item.consignatario;
+      const carnetPrincipal = item.carnetPrincipal;
 
       const existing = await db.trackingEntry.findFirst({ where: { cpk } });
 
@@ -99,7 +88,7 @@ export async function POST(request: NextRequest) {
       synced,
       created,
       updated,
-      total: reservations.length,
+      total: rows.length,
     });
   } catch (error) {
     console.error('SolvedCargo POST error:', error);

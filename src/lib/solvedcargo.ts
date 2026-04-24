@@ -1,17 +1,25 @@
 // ============================================================
 // SOLVEDCARGO - Shared API Integration Module
 // ============================================================
+// Uses the REAL SolvedCargo CargoPack API:
+//   - Login: /php/solved/routing.php → loginUser
+//   - Search: /php/solved/routing.php → getListRecord (returns HTML tables)
+//   - Session: checkIfValidSession returns "1" (not "true")
+// ============================================================
+
+import * as cheerio from 'cheerio';
 
 const SOLVEDCARGO_BASE = 'https://www.solvedc.com/cargo/cargopack/v1';
+const API_PATH = `${SOLVEDCARGO_BASE}/php/solved/routing.php`;
 const SOLVEDCARGO_USER = process.env.SOLVEDCARGO_USER || 'GEO MIA';
 const SOLVEDCARGO_PASS = process.env.SOLVEDCARGO_PASS || 'GEO**091223';
+const ENTERPRISE_ID = process.env.SOLVEDCARGO_ENTERPRISE_ID || '55';
 
 export interface SolvedCargoSession {
   cookie: string;
   username: string;
   enterprise: string;
   iduser: string;
-  agencies: string;
   expiresAt: number;
 }
 
@@ -21,13 +29,12 @@ let cachedSession: SolvedCargoSession | null = null;
  * Login to SolvedCargo and cache the session for 30 minutes
  */
 export async function login(): Promise<SolvedCargoSession | null> {
-  // Reuse cached session if still valid (within 30 minutes)
   if (cachedSession && Date.now() < cachedSession.expiresAt) {
     return cachedSession;
   }
 
   try {
-    const loginRes = await fetch(`${SOLVEDCARGO_BASE}/php/solved/routing.php`, {
+    const loginRes = await fetch(API_PATH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `funcname=loginUser&user=${encodeURIComponent(SOLVEDCARGO_USER)}&password=${encodeURIComponent(SOLVEDCARGO_PASS)}`,
@@ -49,15 +56,14 @@ export async function login(): Promise<SolvedCargoSession | null> {
     try {
       loginData = JSON.parse(loginText);
     } catch {
-      // Response might be plain text
       if (loginText.includes('Not found') || loginText.includes('Error')) {
         console.error('SolvedCargo login failed:', loginText);
         return null;
       }
     }
 
-    // Validate session
-    const validRes = await fetch(`${SOLVEDCARGO_BASE}/php/solved/routing.php`, {
+    // Validate session — API returns "1", NOT "true"
+    const validRes = await fetch(API_PATH, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -67,8 +73,9 @@ export async function login(): Promise<SolvedCargoSession | null> {
     });
     const validText = await validRes.text();
 
-    if (validText.trim() !== 'true') {
-      console.error('SolvedCargo session validation failed');
+    // FIX: API returns "1" for valid session, not "true"
+    if (validText.trim() !== '1' && validText.trim().toLowerCase() !== 'true') {
+      console.error('SolvedCargo session validation failed, got:', validText);
       return null;
     }
 
@@ -77,8 +84,7 @@ export async function login(): Promise<SolvedCargoSession | null> {
       username: SOLVEDCARGO_USER,
       enterprise: loginData?.enterprise || 'CHAMBATINA',
       iduser: loginData?.iduser || '',
-      agencies: loginData?.agencies || '',
-      expiresAt: Date.now() + 30 * 60 * 1000, // 30 min cache
+      expiresAt: Date.now() + 30 * 60 * 1000,
     };
 
     console.log('SolvedCargo: Login successful');
@@ -90,136 +96,67 @@ export async function login(): Promise<SolvedCargoSession | null> {
 }
 
 /**
- * Load all reservations from SolvedCargo
+ * Parse HTML table rows returned by getListRecord into structured data
+ * Data is in the `title` attribute of each <td> element
  */
-export async function getAllReservations(session: SolvedCargoSession): Promise<any[]> {
-  try {
-    const res = await fetch(`${SOLVEDCARGO_BASE}/php/routing.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': session.cookie,
-      },
-      body: `funcname=loadContainer&name=${encodeURIComponent(session.username)}&password=${encodeURIComponent(SOLVEDCARGO_PASS)}&container=dcargo&mode=transcargo`,
-    });
+function parseHTMLRows(html: string): Record<string, string>[] {
+  const $ = cheerio.load(html);
+  const rows: Record<string, string>[] = [];
 
-    const text = await res.text();
-
-    try {
-      const data = JSON.parse(text);
-      if (data && data.datos && Array.isArray(data.datos)) {
-        return data.datos;
-      }
-      if (Array.isArray(data)) {
-        return data;
-      }
-    } catch {
-      console.error('SolvedCargo: Failed to parse reservations response');
-    }
-
-    return [];
-  } catch (error) {
-    console.error('SolvedCargo getAllReservations error:', error);
-    return [];
-  }
-}
-
-/**
- * Trace a specific shipment by HAWB number from SolvedCargo
- */
-export async function traceShipment(session: SolvedCargoSession, hawb: string): Promise<any | null> {
-  try {
-    const res = await fetch(`${SOLVEDCARGO_BASE}/php/routing.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': session.cookie,
-      },
-      body: `funcname=traceShipping&checked=${encodeURIComponent(hawb)}&name=${encodeURIComponent(session.username)}&password=${encodeURIComponent(SOLVEDCARGO_PASS)}`,
-    });
-
-    const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      return null;
-    }
-  } catch (error) {
-    console.error('SolvedCargo traceShipment error:', error);
-    return null;
-  }
-}
-
-/**
- * Search SolvedCargo for a specific CPK/HAWB or carnet number
- * Returns matching shipments and whether they came from SolvedCargo
- */
-export async function searchSolvedCargo(query: string): Promise<{
-  found: boolean;
-  results: any[];
-  source: 'solvedcargo' | 'none';
-  error?: string;
-}> {
-  try {
-    const session = await login();
-    if (!session) {
-      return { found: false, results: [], source: 'none', error: 'No se pudo conectar con SolvedCargo' };
-    }
-
-    const trimmed = query.trim();
-    const digitsOnly = trimmed.replace(/[^0-9]/g, '');
-
-    // Try traceShipment first if it looks like a CPK/HAWB
-    if (/CPK/i.test(trimmed) || /^\d{1,8}$/.test(digitsOnly)) {
-      let hawbToTrace = trimmed;
-      // If it's just digits, pad to 7 digits and try with CPK prefix
-      if (/^\d+$/.test(digitsOnly)) {
-        hawbToTrace = `CPK-${digitsOnly.padStart(7, '0')}`;
-      }
-
-      const traceResult = await traceShipment(session, hawbToTrace);
-      if (traceResult) {
-        // traceShipping might return a single object or array
-        const shipments = Array.isArray(traceResult) ? traceResult : [traceResult];
-        const mapped = shipments.map(mapShipmentToTracking).filter(Boolean);
-        if (mapped.length > 0) {
-          return { found: true, results: mapped, source: 'solvedcargo' };
+  $('tr[id^="id_tr_"]').each((_i, el) => {
+    const row: Record<string, string> = {};
+    $(el).find('td[id^="id_td_"]').each((_j, td) => {
+      const tdId = $(td).attr('id') || '';
+      // Extract field name from td id: id_td_{fieldname}_{option}_{kind}_{index}
+      const parts = tdId.replace('id_td_', '').split('_');
+      // The field name could be multi-part (e.g., "nameconsignee"), reconstruct
+      // Format: id_td_{fieldname}_{option}_{kind}_{index}
+      // We need to strip the last 3 parts (option, kind, index)
+      if (parts.length >= 3) {
+        const fieldName = parts.slice(0, parts.length - 3).join('_');
+        const value = $(td).attr('title') || $(td).text().trim();
+        if (fieldName && value) {
+          row[fieldName] = value;
         }
       }
+    });
+    if (Object.keys(row).length > 0) {
+      rows.push(row);
     }
+  });
 
-    // Also try loading all reservations and filtering locally
-    const allReservations = await getAllReservations(session);
-    const normalizedQuery = digitsOnly || trimmed.toUpperCase();
-    const matches: any[] = [];
+  return rows;
+}
 
-    for (const r of allReservations) {
-      const hawb = r.hawb || r.HAWB || r.cpk || '';
-      const carnet = r.carnet || '';
-      const consignatario = r.consignatario || r.Consignatario || '';
+/**
+ * Call getListRecord API with a WHERE clause
+ * Returns parsed array of records
+ */
+async function getListRecords(session: SolvedCargoSession, option: string, whereClause: string): Promise<Record<string, string>[]> {
+  try {
+    const res = await fetch(API_PATH, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': session.cookie,
+      },
+      body: new URLSearchParams({
+        funcname: 'getListRecord',
+        option: option,
+        kind: 'list',
+        idrecord: '-1',
+        where: whereClause,
+        orderby: '',
+        offset: '-1',
+        onlytable: '1',
+      }).toString(),
+    });
 
-      const hawbDigits = hawb.replace(/[^0-9]/g, '');
-      const carnetDigits = carnet.replace(/[^0-9]/g, '');
-
-      // Match by CPK digits, HAWB, or carnet
-      const matchCPK = digitsOnly && (hawbDigits.includes(digitsOnly) || digitsOnly.includes(hawbDigits));
-      const matchCarnet = digitsOnly && carnetDigits && (carnetDigits.includes(digitsOnly) || digitsOnly.includes(carnetDigits));
-      const matchName = trimmed.length >= 3 && consignatario.toUpperCase().includes(trimmed.toUpperCase());
-
-      if (matchCPK || matchCarnet || matchName) {
-        const mapped = mapShipmentToTracking(r);
-        if (mapped) matches.push(mapped);
-      }
-    }
-
-    if (matches.length > 0) {
-      return { found: true, results: matches, source: 'solvedcargo' };
-    }
-
-    return { found: false, results: [], source: 'none' };
+    const html = await res.text();
+    return parseHTMLRows(html);
   } catch (error) {
-    console.error('SolvedCargo search error:', error);
-    return { found: false, results: [], source: 'none', error: 'Error al buscar en SolvedCargo' };
+    console.error(`SolvedCargo getListRecords(${option}) error:`, error);
+    return [];
   }
 }
 
@@ -247,24 +184,126 @@ export function mapEstado(estadoRaw: string): string {
 }
 
 /**
- * Map a SolvedCargo reservation object to our TrackingEntry format
+ * Map a parsed HTML row to our TrackingEntry format
  */
-function mapShipmentToTracking(r: any): any {
-  const cpkRaw = r.hawb || r.HAWB || r.cpk || '';
-  if (!cpkRaw) return null;
+export function mapRowToTracking(row: Record<string, string>): any {
+  const cpk = row.hbl || '';
+  if (!cpk) return null;
 
   return {
-    cpk: cpkRaw,
-    fecha: r.fecha || r.date || r.Fecha || null,
-    estado: mapEstado(r.estado || r.Estado || r.status || ''),
-    descripcion: r.mercancia || r.mercancías || r.Mercancias || r.description || null,
-    embarcador: r.embarcador || r.Embarcador || r.shipper || null,
-    consignatario: r.consignatario || r.Consignatario || r.consignee || null,
-    carnetPrincipal: r.carnet || null,
-    rawData: JSON.stringify(r),
+    cpk: cpk.trim(),
+    fecha: row.datereserve || null,
+    estado: mapEstado(row.idreservestate || row.reservestate || ''),
+    descripcion: row.description || row.mercancia || null,
+    embarcador: row.enterprisename || SOLVEDCARGO_USER,
+    consignatario: row.nameconsignee || row.cname || null,
+    carnetPrincipal: row.cidentity || null,
+    peso: row.weight || row.peso || null,
     _source: 'solvedcargo',
     _isNew: true,
   };
+}
+
+/**
+ * Search SolvedCargo for a specific CPK/HAWB or carnet number
+ * Uses getListRecord with appropriate WHERE clauses
+ * Searches across all reservation types: reservea, reservem, reservec, reservef
+ */
+export async function searchSolvedCargo(query: string): Promise<{
+  found: boolean;
+  results: any[];
+  source: 'solvedcargo' | 'none';
+  error?: string;
+}> {
+  try {
+    const session = await login();
+    if (!session) {
+      return { found: false, results: [], source: 'none', error: 'No se pudo conectar con SolvedCargo' };
+    }
+
+    const trimmed = query.trim();
+    const digitsOnly = trimmed.replace(/[^0-9]/g, '');
+    const upperTrimmed = trimmed.toUpperCase();
+
+    // Build WHERE clauses to try
+    const whereClauses: string[] = [];
+
+    // If it looks like a CPK (has CPK prefix or short digits)
+    if (/CPK/i.test(upperTrimmed) || /^\d{1,8}$/.test(digitsOnly)) {
+      let cpkSearch = upperTrimmed;
+      if (/^\d+$/.test(digitsOnly)) {
+        // Pad to 7 digits for CPK format
+        cpkSearch = `CPK-${digitsOnly.padStart(7, '0')}`;
+      }
+      whereClauses.push(`(hbl LIKE "%${cpkSearch}%")`);
+      // Also try without CPK prefix in case the user typed just digits
+      if (/^\d+$/.test(digitsOnly)) {
+        whereClauses.push(`(hbl LIKE "%${digitsOnly}%")`);
+      }
+    }
+
+    // If it looks like a carnet (9-12 digits), search by identity
+    if (/^\d{9,12}$/.test(digitsOnly)) {
+      whereClauses.push(`(cidentity LIKE "%${digitsOnly}%")`);
+    }
+
+    // If we couldn't determine the type, try both
+    if (whereClauses.length === 0) {
+      whereClauses.push(`(hbl LIKE "%${trimmed}%")`);
+      if (digitsOnly.length >= 5) {
+        whereClauses.push(`(cidentity LIKE "%${digitsOnly}%")`);
+      }
+    }
+
+    // Search across all reservation types
+    const reservationTypes = ['reservef', 'reservea', 'reservem', 'reservec'];
+    const allResults: any[] = [];
+    const seenCPKs = new Set<string>();
+
+    for (const option of reservationTypes) {
+      for (const wherePart of whereClauses) {
+        const whereClause = `(${wherePart}) AND (r.identerprise = ${ENTERPRISE_ID})`;
+        const rows = await getListRecords(session, option, whereClause);
+
+        for (const row of rows) {
+          const mapped = mapRowToTracking(row);
+          if (mapped && !seenCPKs.has(mapped.cpk)) {
+            seenCPKs.add(mapped.cpk);
+            allResults.push(mapped);
+          }
+        }
+
+        // If we already found results from this reservation type, no need to try more WHERE clauses
+        if (rows.length > 0) break;
+      }
+    }
+
+    if (allResults.length > 0) {
+      return { found: true, results: allResults, source: 'solvedcargo' };
+    }
+
+    return { found: false, results: [], source: 'none' };
+  } catch (error) {
+    console.error('SolvedCargo search error:', error);
+    return { found: false, results: [], source: 'none', error: 'Error al buscar en SolvedCargo' };
+  }
+}
+
+/**
+ * Get all reservations from SolvedCargo for this enterprise
+ * Searches across all reservation types
+ */
+export async function getAllReservations(session: SolvedCargoSession): Promise<Record<string, string>[]> {
+  const allRows: Record<string, string>[] = [];
+  const reservationTypes = ['reservef', 'reservea', 'reservem', 'reservec'];
+
+  for (const option of reservationTypes) {
+    const whereClause = `(r.identerprise = ${ENTERPRISE_ID}) AND ((r.deleted = 0) OR (r.deleted IS NULL))`;
+    const rows = await getListRecords(session, option, whereClause);
+    allRows.push(...rows);
+  }
+
+  return allRows;
 }
 
 /**
