@@ -61,6 +61,7 @@ import {
   ChevronDown,
   ChevronUp,
   X,
+  Globe,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -87,6 +88,9 @@ const CATEGORIAS = [
   'horarios',
   'aduana',
   'embalaje',
+  'articulo',
+  'web',
+  'noticia',
 ];
 
 const CATEGORIA_COLORS: Record<string, string> = {
@@ -102,6 +106,9 @@ const CATEGORIA_COLORS: Record<string, string> = {
   horarios: 'bg-cyan-100 text-cyan-700',
   aduana: 'bg-rose-100 text-rose-700',
   embalaje: 'bg-teal-100 text-teal-700',
+  articulo: 'bg-sky-100 text-sky-700',
+  web: 'bg-indigo-100 text-indigo-700',
+  noticia: 'bg-lime-100 text-lime-700',
 };
 
 interface EntryForm {
@@ -143,6 +150,13 @@ export function AITrainingPanel() {
 
   // Import/Export
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Learn from URL
+  const [scrapeUrl, setScrapeUrl] = useState('');
+  const [scrapeCategoria, setScrapeCategoria] = useState('articulo');
+  const [scraping, setScraping] = useState(false);
+  const [scrapeResult, setScrapeResult] = useState<{ entriesCreated: number; entries: any[] } | null>(null);
+  const [showScrape, setShowScrape] = useState(false);
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
@@ -278,6 +292,31 @@ export function AITrainingPanel() {
       setTestAnswer('Error de conexión');
     } finally {
       setTestLoading(false);
+    }
+  };
+
+  const handleScrape = async () => {
+    if (!scrapeUrl.trim()) return;
+    setScraping(true);
+    setScrapeResult(null);
+    try {
+      const res = await fetch('/api/ai-knowledge/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: scrapeUrl.trim(), categoria: scrapeCategoria }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setScrapeResult(json.data);
+        toast.success(`${json.data.entriesCreated} entradas creadas desde la URL`);
+        loadEntries();
+      } else {
+        toast.error(json.error || 'Error al procesar la URL');
+      }
+    } catch {
+      toast.error('Error de conexión');
+    } finally {
+      setScraping(false);
     }
   };
 
@@ -716,6 +755,152 @@ export function AITrainingPanel() {
             </div>
           )}
         </CardContent>
+      </Card>
+
+      {/* Learn from URL Section */}
+      <Card className="border-0 shadow-md">
+        <CardHeader
+          className="cursor-pointer"
+          onClick={() => setShowScrape(!showScrape)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center">
+                <Globe className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Aprender de URL</CardTitle>
+                <CardDescription className="text-xs">
+                  Extrae información de una página web y agrégala a la base de conocimiento
+                </CardDescription>
+              </div>
+            </div>
+            {showScrape ? (
+              <ChevronUp className="h-5 w-5 text-zinc-400" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-zinc-400" />
+            )}
+          </div>
+        </CardHeader>
+        <AnimatePresence>
+          {showScrape && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <CardContent className="pt-0 space-y-3">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    value={scrapeUrl}
+                    onChange={(e) => setScrapeUrl(e.target.value)}
+                    placeholder="https://ejemplo.com/articulo"
+                    className="flex-1"
+                    disabled={scraping}
+                    onKeyDown={(e) => e.key === 'Enter' && handleScrape()}
+                  />
+                  <Select value={scrapeCategoria} onValueChange={setScrapeCategoria} disabled={scraping}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIAS.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handleScrape}
+                    disabled={scraping || !scrapeUrl.trim()}
+                    className="bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-white whitespace-nowrap"
+                  >
+                    {scraping ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <Globe className="h-4 w-4 mr-1.5" />
+                        Scrape &amp; Learn
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {scraping && (
+                  <div className="flex items-center gap-2 text-sm text-zinc-500 p-2 bg-zinc-50 rounded-lg">
+                    <Loader2 className="h-4 w-4 animate-spin text-sky-500" />
+                    <span>Descargando y analizando contenido de la página...</span>
+                  </div>
+                )}
+                {scrapeResult && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-3"
+                  >
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Check className="h-5 w-5 text-emerald-600" />
+                        <span className="text-sm font-semibold text-emerald-700">
+                          {scrapeResult.entriesCreated} entradas creadas exitosamente
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-600 truncate">
+                        Fuente: {scrapeResult.url}
+                      </p>
+                    </div>
+                    {scrapeResult.entries.length > 0 && (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+                          Entradas extraídas:
+                        </p>
+                        {scrapeResult.entries.map((entry: any, i: number) => (
+                          <div
+                            key={entry.id || i}
+                            className="bg-zinc-50 rounded-lg p-3 border text-sm"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-zinc-700 truncate">
+                                  {entry.pregunta}
+                                </p>
+                                <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">
+                                  {entry.respuesta}
+                                </p>
+                              </div>
+                              <Badge
+                                variant="secondary"
+                                className={`shrink-0 text-xs ${CATEGORIA_COLORS[entry.categoria] || 'bg-zinc-100 text-zinc-700'}`}
+                              >
+                                {entry.categoria}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setScrapeResult(null);
+                        setScrapeUrl('');
+                      }}
+                      className="text-xs"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Limpiar resultado
+                    </Button>
+                  </motion.div>
+                )}
+              </CardContent>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Card>
 
       {/* Categories Breakdown */}

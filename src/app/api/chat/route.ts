@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { detectarIntencion, BUSINESS_CONTEXT, calcularEnvio, BICICLETAS, CAJAS } from '@/lib/chambatina';
+import { BUSINESS_CONTEXT, calcularEnvio, PRECIOS_POR_LIBRA, CARGO_EQUIPO } from '@/lib/chambatina';
 import ZAI from 'z-ai-web-dev-sdk';
 
-// Config keys and their defaults
+// Config defaults
 const CONFIG_DEFAULTS: Record<string, string> = {
   direccion: '7523 Aloma Ave, Winter Park, FL 32792, Suite 112',
   telefono1: '786-942-6904',
@@ -37,66 +37,113 @@ async function getConfig(keys: string[]): Promise<Record<string, string>> {
   }
 }
 
-// Search knowledge base for matching entries
-async function searchKnowledge(query: string): Promise<string> {
-  try {
-    const queryWords = query.toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .split(/\s+/)
-      .filter(w => w.length > 2);
+// Extract structured data from user message
+function extractStructuredData(mensaje: string) {
+  const data: Record<string, any> = {};
 
-    if (queryWords.length === 0) return '';
-
-    const entries = await db.aIKnowledge.findMany({
-      where: { activa: true },
-      orderBy: { prioridad: 'desc' },
-    });
-
-    // Score each entry
-    const scored = entries.map(entry => {
-      const preguntaLower = entry.pregunta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const respuestaLower = entry.respuesta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const keywordsLower = entry.keywords.map(k => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
-      
-      let score = 0;
-      
-      // Check keywords match
-      for (const kw of keywordsLower) {
-        if (kw && kw.length > 1) {
-          for (const qw of queryWords) {
-            if (qw === kw || qw.includes(kw) || kw.includes(qw)) {
-              score += 10;
-            }
-          }
-        }
-      }
-      
-      // Check pregunta words match
-      for (const qw of queryWords) {
-        if (preguntaLower.includes(qw)) {
-          score += 5;
-        }
-        // Also check respuesta words
-        if (respuestaLower.includes(qw)) {
-          score += 2;
-        }
-      }
-      
-      // Category bonus
-      if (entry.prioridad > 0) score += entry.prioridad;
-      
-      return { entry, score };
-    }).filter(s => s.score > 3).sort((a, b) => b.score - a.score);
-
-    if (scored.length > 0) {
-      const topEntries = scored.slice(0, 3);
-      return topEntries.map(s => s.entry.respuesta).join('\n\n');
-    }
-    return '';
-  } catch {
-    return '';
+  // Extract weight for price calculation
+  const pesoMatch = mensaje.match(/(\d+(?:\.\d+)?)\s*(?:lb|libras|libra|pounds?|lbs?)/i);
+  if (pesoMatch) {
+    data.peso = parseFloat(pesoMatch[1]);
+    let tipo: 'equipo' | 'recogida' | 'tiktok' = 'equipo';
+    if (/recogida|domicilio|casa|home/i.test(mensaje)) tipo = 'recogida';
+    else if (/tiktok|redes sociales/i.test(mensaje)) tipo = 'tiktok';
+    data.calculo = calcularEnvio(data.peso, tipo);
   }
+
+  // Extract CPK number
+  const cpkMatch = mensaje.match(/CPK[-\s]?(\d+)/i);
+  if (cpkMatch) data.cpk = `CPK-${cpkMatch[1]}`;
+
+  // Extract carnet number (8-12 digits, not part of a CPK)
+  const carnetMatch = mensaje.match(/(\d{8,12})/);
+  if (carnetMatch && !/CPK/i.test(mensaje)) data.carnet = carnetMatch[1];
+
+  return data;
+}
+
+// Build knowledge context from ALL active entries
+async function buildKnowledgeContext(): Promise<string> {
+  const entries = await db.aIKnowledge.findMany({
+    where: { activa: true },
+    orderBy: [{ prioridad: 'desc' }, { createdAt: 'desc' }],
+  });
+
+  if (entries.length === 0) return '';
+
+  return entries.map((entry, i) => {
+    return `[${i + 1}] Categoría: ${entry.categoria}\nPregunta frecuente: ${entry.pregunta}\nRespuesta: ${entry.respuesta}\nKeywords: ${entry.keywords.join(', ')}`;
+  }).join('\n\n---\n\n');
+}
+
+// Build dynamic system prompt
+async function buildSystemPrompt(structuredData: Record<string, any>): Promise<string> {
+  const config = await getConfig(Object.keys(CONFIG_DEFAULTS));
+  const knowledgeContext = await buildKnowledgeContext();
+
+  let prompt = BUSINESS_CONTEXT;
+
+  // Add current config
+  prompt += `\n\nINFORMACIÓN ACTUALIZADA DE CONTACTO:
+- Dirección: ${config.direccion || CONFIG_DEFAULTS.direccion}
+- Teléfono 1: ${config.telefono1 || CONFIG_DEFAULTS.telefono1} (${config.nombre_contacto1 || CONFIG_DEFAULTS.nombre_contacto1})
+- Teléfono 2: ${config.telefono2 || CONFIG_DEFAULTS.telefono2} (${config.nombre_contacto2 || CONFIG_DEFAULTS.nombre_contacto2})`;
+  if (config.telefono3) prompt += `\n- Teléfono 3: ${config.telefono3} (${config.nombre_contacto3})`;
+  if (config.whatsapp) prompt += `\n- WhatsApp: ${config.whatsapp}`;
+  if (config.email) prompt += `\n- Email: ${config.email}`;
+  if (config.instagram) prompt += `\n- Instagram: ${config.instagram}`;
+  if (config.facebook) prompt += `\n- Facebook: ${config.facebook}`;
+  if (config.horario) prompt += `\n- Horario: ${config.horario}`;
+
+  // Add structured data context (price calculations, tracking info)
+  if (structuredData.peso && structuredData.calculo) {
+    const c = structuredData.calculo;
+    prompt += `\n\nCÁLCULO DE PRECIO SOLICITADO POR EL USUARIO:
+- Peso: ${c.peso} lb
+- Tipo: ${c.tipo}
+- Precio por libra: $${c.precioPorLibra.toFixed(2)}
+- Subtotal: $${c.subtotal.toFixed(2)}
+${c.cargoEquipo > 0 ? `- Cargo por equipo: $${c.cargoEquipo.toFixed(2)}\n` : ''}- TOTAL: $${c.total.toFixed(2)}
+Fórmula: ${c.tipo === 'equipo' ? `(${c.peso} × $${c.precioPorLibra}) + $${c.cargoEquipo}` : `${c.peso} × $${c.precioPorLibra}`}
+Responde con el cálculo detallado de forma natural y amable.`;
+  }
+
+  if (structuredData.cpk) {
+    prompt += `\n\nINFORMACIÓN DE RASTREO SOLICITADA:
+- Número CPK: ${structuredData.cpk}
+Informa al usuario que puede rastrear su paquete usando el Rastreador en el menú principal con el número ${structuredData.cpk}.`;
+  }
+
+  if (structuredData.carnet) {
+    prompt += `\n\nINFORMACIÓN DE RASTREO SOLICITADA:
+- Número de carnet: ${structuredData.carnet}
+Informa al usuario que puede buscar sus paquetes usando el Rastreador en el menú principal con el número de carnet ${structuredData.carnet}.`;
+  }
+
+  // Add knowledge base
+  if (knowledgeContext) {
+    prompt += `\n\nBASE DE CONOCIMIENTO DE LA EMPRESA:
+La siguiente información ha sido aprendida por el administrador y DEBES usarla para responder preguntas relevantes:
+
+${knowledgeContext}
+
+IMPORTANTE: Usa la información anterior para responder preguntas relacionadas. Si la base de conocimiento tiene información relevante, dale prioridad y responde de forma natural, no copies textualmente.`;
+  }
+
+  // Enhanced conversational rules
+  prompt += `\n\nREGLAS DE CONVERSACIÓN:
+1. Responde SIEMPRE en español de forma natural y conversacional
+2. Sé amable, cálido y profesional - como un amigo que trabaja en Chambatina
+3. NO uses respuestas robóticas ni con demasiados emojis
+4. Adapta tu respuesta al tono del usuario
+5. Si te preguntan por algo que no sabes, sé honesto y sugiere contactar a la oficina
+6. Para cálculos de precio, muestra la información clara y detalladamente
+7. Si preguntan por rastreo, guíalos al Rastreador con el número correspondiente
+8. Mantén las respuestas completas pero no excesivamente largas
+9. Puedes usar formato Markdown básico (**negrita**, listas con -)
+10. NUNCA inventes información que no esté en tu base de conocimiento o contexto`;
+
+  return prompt;
 }
 
 export async function POST(request: NextRequest) {
@@ -113,143 +160,46 @@ export async function POST(request: NextRequest) {
       data: { sessionId, role: 'user', content: mensaje },
     });
 
-    // ALWAYS search knowledge base first (before intent detection)
-    const knowledgeContext = await searchKnowledge(mensaje);
-    const hasStrongKnowledge = knowledgeContext.length > 50;
+    // Extract structured data from message
+    const structuredData = extractStructuredData(mensaje);
 
-    // Detect intent
-    const intent = detectarIntencion(mensaje);
+    // Build AI system prompt with all context
+    const systemPrompt = await buildSystemPrompt(structuredData);
+
+    // Get conversation history
+    const chatHistory = await db.chatMessage.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+    });
+
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...chatHistory.map(m => ({
+        role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: m.content,
+      })),
+    ];
+
+    // Call AI
     let respuesta = '';
-
-    // If knowledge base has strong match, use it directly (bypass intent)
-    if (hasStrongKnowledge && intent.intent === 'default') {
-      try {
-        const chatHistory = await db.chatMessage.findMany({
-          where: { sessionId },
-          orderBy: { createdAt: 'asc' },
-          take: 20,
-        });
-        const messages = chatHistory.map(m => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        }));
-        let systemPrompt = BUSINESS_CONTEXT;
-        systemPrompt += `\n\nCONOCIMIENTO ESPECÍFICO DE LA BASE DE DATOS:\n${knowledgeContext}\n\nUsa esta información para responder si es relevante. Si la información de la base de datos responde la pregunta, dale prioridad y responde directamente.`;
-        const zai = await ZAI.create();
-        const completion = await zai.chat.completions.create({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messages,
-          ],
-        });
-        respuesta = completion.choices?.[0]?.message?.content || 'Lo siento, no pude generar una respuesta.';
-      } catch (aiError) {
-        console.error('AI Error:', aiError);
-        respuesta = knowledgeContext;
-      }
-    } else {
-    switch (intent.intent) {
-      case 'saludo':
-        respuesta = '¡Hola! 👋 Soy el asistente virtual de **Chambatina**. Estoy aquí para ayudarte con lo que necesites.\n\nPuedo ayudarte con:\n- 📦 **Precios de envío** — Dime el peso y te calculo el costo\n- 🚲 **Envío de bicicletas** — Precios por tipo\n- 📋 **Rastreo de paquetes** — Busca por CPK o carnet\n- ☀️ **Sistemas solares** — Info sobre EcoFlow\n- 📍 **Información de contacto** — Dirección y teléfonos\n\n¿En qué te puedo ayudar?';
-        break;
-
-      case 'precio_peso': {
-        const { peso, tipo, total, subtotal, cargoEquipo } = intent.data;
-        const tipoLabel = tipo === 'recogida' ? 'recogida a domicilio' : tipo === 'tiktok' ? 'compras TikTok' : 'equipo';
-        respuesta = `💰 **Cálculo de envío:**\n\n- **Peso:** ${peso} lb\n- **Tipo:** ${tipoLabel}\n- **Precio por libra:** $${intent.data.precioPorLibra.toFixed(2)}\n- **Subtotal:** $${subtotal.toFixed(2)}\n${cargoEquipo > 0 ? `- **Cargo por equipo:** $${cargoEquipo.toFixed(2)}\n` : ''}- **Total: $${total.toFixed(2)}**\n\n${tipo === 'equipo' ? 'Fórmula: (Peso × $1.99) + $25 cargo de equipo' : `Fórmula: Peso × $${intent.data.precioPorLibra.toFixed(2)}`}\n\n¿Deseas hacer este envío? Puedes ir a la sección de **Hacer un Envío** desde el menú.`;
-        break;
-      }
-
-      case 'precio_bicicleta':
-        respuesta = `🚲 **Precios de Envío de Bicicletas:**\n\n${intent.data.bicicletas.map((b: { descripcion: string; precio: number }) => `- **${b.descripcion}**: $${b.precio}`).join('\n')}\n\n¿Necesitas enviar una bicicleta? Contáctanos para coordinar la recogida.`;
-        break;
-
-      case 'precio_caja':
-        respuesta = `📦 **Precios de Cajas de Envío:**\n\n${intent.data.cajas.map((c: { nombre: string; dimensiones: string; pesoMaximo: number; precio: number }) => `- **${c.nombre}** (${c.dimensiones}, hasta ${c.pesoMaximo} lb): $${c.precio}`).join('\n')}\n\n¿Necesitas una caja para tu envío?`;
-        break;
-
-      case 'precio_general':
-        respuesta = `💰 **Lista de Precios Chambatina:**\n\n**Envíos por libra:**\n- 🏢 Equipo: **$1.99/lb** + $25 cargo\n- 🏠 Recogida a domicilio: **$2.30/lb**\n- 🛒 Compras TikTok: **$1.80/lb**\n\n**Bicicletas:**\n${intent.data.bicicletas.map((b: { descripcion: string; precio: number }) => `- ${b.descripcion}: $${b.precio}`).join('\n')}\n\n**Cajas:**\n${intent.data.cajas.map((c: { nombre: string; dimensiones: string; precio: number }) => `- ${c.nombre} (${c.dimensiones}): $${c.precio}`).join('\n')}\n\n¿Quieres que calcule el precio de un envío específico? Solo dime el peso.`;
-        break;
-
-      case 'tracking_cpk':
-        respuesta = `📋 Para rastrear el paquete **${intent.data.cpk}**, usa el **Rastreador** en el menú principal.\n\nAhí podrás ver el estado actual, la ubicación y el historial completo de tu envío en tiempo real.`;
-        break;
-
-      case 'tracking_carnet':
-        respuesta = `📋 Para buscar por carnet **${intent.data.carnet}**, ve al **Rastreador** en el menú principal.\n\nSolo ingresa tu número de carnet y te mostraremos todos los paquetes asociados.`;
-        break;
-
-      case 'tracking_info':
-        respuesta = `📋 **Rastreo de Paquetes:**\n\nPuedes rastrear tu paquete usando:\n- **Número CPK** (ejemplo: CPK-0266228 o solo el número 266228)\n- **Carnet de identidad** del destinatario o de un familiar\n\nUsa el **Rastreador** en el menú principal para buscar en tiempo real.`;
-        break;
-
-      case 'contacto': {
-        const d = await getConfig(['direccion', 'telefono1', 'nombre_contacto1', 'telefono2', 'nombre_contacto2', 'telefono3', 'nombre_contacto3', 'horario', 'email', 'whatsapp']);
-        const direccion = d.direccion;
-        const lines: string[] = [];
-        if (d.telefono1) lines.push(`${d.nombre_contacto1 || 'Tel'}: **${d.telefono1}**`);
-        if (d.telefono2) lines.push(`${d.nombre_contacto2 || 'Tel'}: **${d.telefono2}**`);
-        if (d.telefono3) lines.push(`${d.nombre_contacto3 || 'Tel'}: **${d.telefono3}**`);
-        let telefonos = lines.join('\n- ');
-        if (d.whatsapp) telefonos += `\n- WhatsApp: **${d.whatsapp}**`;
-        if (d.email) telefonos += `\n- Email: **${d.email}**`;
-        let horarioStr = '';
-        if (d.horario) horarioStr = `\n\n⏰ **Horario:** ${d.horario}`;
-        respuesta = `📍 **Información de Contacto:**\n\n🏢 **Oficina:** ${direccion}\n\n📞 **Teléfonos:**\n- ${telefonos}${horarioStr}\n\n¡Visítanos o llámanos, estamos para ayudarte!`;
-        break;
-      }
-
-      case 'bicicletas':
-        respuesta = `🚲 **Servicio de Envío de Bicicletas Chambatina:**\n\n${BICICLETAS.map(b => `- **${b.descripcion}**: $${b.precio}`).join('\n')}\n\n¿Te interesa enviar una bicicleta? Contáctanos y coordinamos la recogida.`;
-        break;
-
-      case 'solar': {
-        const sd = await getConfig(['telefono1', 'nombre_contacto1', 'telefono2', 'nombre_contacto2']);
-        const solarLines: string[] = [];
-        if (sd.telefono1) solarLines.push(`📞 **${sd.telefono1}** (${sd.nombre_contacto1 || 'Contacto'})`);
-        if (sd.telefono2) solarLines.push(`📞 **${sd.telefono2}** (${sd.nombre_contacto2 || 'Contacto'})`);
-        const solarPhones = solarLines.join('\n') || '📞 Contacta a la oficina';
-        respuesta = `☀️ **Sistemas de Energía Solar:**\n\nChambatina ofrece orientación y productos de energía solar, incluyendo sistemas **EcoFlow** para tu hogar o negocio.\n\nPara más información sobre productos y precios:\n${solarPhones}\n\n¡La energía solar es el futuro, y nosotros te ayudamos a dar el primer paso!`;
-        break;
-      }
-
-      default: {
-        // For general chat, use knowledge base + AI
-        try {
-          const chatHistory = await db.chatMessage.findMany({
-            where: { sessionId },
-            orderBy: { createdAt: 'asc' },
-            take: 20,
-          });
-
-          const messages = chatHistory.map(m => ({
-            role: m.role as 'user' | 'assistant',
-            content: m.content,
-          }));
-
-          let systemPrompt = BUSINESS_CONTEXT;
-          if (knowledgeContext) {
-            systemPrompt += `\n\nCONOCIMIENTO ESPECÍFICO DE LA BASE DE DATOS:\n${knowledgeContext}\n\nUsa esta información para responder si es relevante a la pregunta del usuario. Si la información de la base de datos es relevante, dale prioridad.`;
-          }
-
-          const zai = await ZAI.create();
-          const completion = await zai.chat.completions.create({
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages,
-            ],
-          });
-
-          respuesta = completion.choices?.[0]?.message?.content || 'Lo siento, no pude generar una respuesta.';
-        } catch (aiError) {
-          console.error('AI Error:', aiError);
-          respuesta = 'Lo siento, tuve un problema al procesar tu mensaje. ¿Podrías reformular tu pregunta?\n\nSi necesitas información sobre **precios** o **rastreo**, puedo ayudarte directamente. También puedes contactarnos por teléfono o WhatsApp.';
-        }
-        break;
+    try {
+      const zai = await ZAI.create();
+      const completion = await zai.chat.completions.create({
+        messages,
+        temperature: 0.7,
+      });
+      respuesta = completion.choices?.[0]?.message?.content || 'Lo siento, no pude generar una respuesta. ¿Podrías reformular tu pregunta?';
+    } catch (aiError) {
+      console.error('AI Error:', aiError);
+      // Fallback: use structured data if available
+      if (structuredData.peso && structuredData.calculo) {
+        const c = structuredData.calculo;
+        respuesta = `💰 **Cálculo de envío:**\n\n- Peso: ${c.peso} lb\n- Total: $${c.total.toFixed(2)}\n\n¿Necesitas más información?`;
+      } else {
+        respuesta = 'Lo siento, tuve un problema temporal. ¿Podrías intentarlo de nuevo?\n\nSi necesitas información urgente, puedes llamarnos al **786-942-6904** (Geo) o **786-784-6421** (Adriana).';
       }
     }
-    } // end else block (knowledge bypass)
 
     // Save assistant response
     await db.chatMessage.create({
