@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { normalizarCPK, estadoPorTiempo, ETAPAS } from '@/lib/chambatina';
 
-// Map real estado string to matching ETAPA for timeline display
+// Map real estado string to matching ETAPA for timeline display (13 stages)
 function matchEtapa(estado: string) {
   const upper = estado.toUpperCase().trim();
   for (const etapa of ETAPAS) {
@@ -12,9 +12,17 @@ function matchEtapa(estado: string) {
   }
   // Fallback mappings for common variations
   if (upper.includes('ENTREGADO')) return ETAPAS.find(e => e.estado === 'ENTREGADO');
+  if (upper.includes('ALMACEN') && upper.includes('PROVINCIAL')) return ETAPAS.find(e => e.estado === 'ALMACEN PROVINCIAL');
+  if (upper.includes('TRASLADO') || (upper.includes('PROVINCIA') && !upper.includes('ALMACEN'))) return ETAPAS.find(e => e.estado === 'TRASLADO PROVINCIA');
+  if (upper.includes('ALMACEN') && upper.includes('CENTRAL')) return ETAPAS.find(e => e.estado === 'ALMACEN CENTRAL');
+  if (upper.includes('CLASIFICACION') || upper.includes('CLASIFICACIÓN')) return ETAPAS.find(e => e.estado === 'CLASIFICACION');
   if (upper.includes('DISTRIBUCION') || upper.includes('DISTRIBUCIÓN') || upper.includes('REPARTO')) return ETAPAS.find(e => e.estado === 'EN DISTRIBUCION');
   if (upper.includes('ADUANA')) return ETAPAS.find(e => e.estado === 'EN ADUANA');
-  if (upper.includes('TRANSITO') || upper.includes('TRÁNSITO')) return ETAPAS.find(e => e.estado === 'EN TRANSITO');
+  if (upper.includes('DESGRUPE') || upper.includes('DESTUFFING')) return ETAPAS.find(e => e.estado === 'DESGRUPE');
+  if (upper.includes('NAVIERA') || upper.includes('PUERTO') || upper.includes('ARRIBO')) return ETAPAS.find(e => e.estado === 'EN NAVIERA');
+  if (upper.includes('CONTENEDOR') || upper.includes('ESTIBA')) return ETAPAS.find(e => e.estado === 'EN CONTENEDOR');
+  if (upper.includes('TRANSITO') || upper.includes('TRÁNSITO') || upper.includes('RUMBO')) return ETAPAS.find(e => e.estado === 'EN TRANSITO');
+  if (upper.includes('TRANSPORTE')) return ETAPAS.find(e => e.estado === 'TRANSPORTE A NAVIERA');
   if (upper.includes('AGENCIA') || upper.includes('RECIBIDO') || upper.includes('PENDIENTE')) return ETAPAS.find(e => e.estado === 'EN AGENCIA');
   if (upper.includes('EMBARCADO')) return ETAPAS.find(e => e.estado === 'EN AGENCIA');
   return null;

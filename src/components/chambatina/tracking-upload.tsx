@@ -44,6 +44,14 @@ import {
   Clock,
   MapPin,
   ShieldCheck,
+  Ship,
+  Anchor,
+  PackageOpen,
+  Layers,
+  Warehouse,
+  Container,
+  RefreshCw,
+  Globe,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -59,14 +67,21 @@ interface TrackingEntry {
   createdAt: string;
 }
 
-// Predefined states with icons and colors for quick selection
+// Predefined states with icons and colors for quick selection (13 logistics stages)
 const ESTADOS_PREDEFINIDOS = [
   { value: 'EN AGENCIA', label: 'En Agencia', color: 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200', icon: Building2 },
-  { value: 'EN TRANSITO', label: 'En Tránsito', color: 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200', icon: Truck },
-  { value: 'EN ADUANA', label: 'En Aduana', color: 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200', icon: ShieldCheck },
-  { value: 'EN DISTRIBUCION', label: 'En Distribución', color: 'bg-cyan-100 text-cyan-700 border-cyan-200 hover:bg-cyan-200', icon: MapPin },
+  { value: 'TRANSPORTE A NAVIERA', label: 'Transporte Naviera', color: 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200', icon: Truck },
+  { value: 'EN CONTENEDOR', label: 'En Contenedor', color: 'bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-200', icon: Container },
+  { value: 'EN TRANSITO', label: 'En Tránsito', color: 'bg-sky-100 text-sky-700 border-sky-200 hover:bg-sky-200', icon: Ship },
+  { value: 'EN NAVIERA', label: 'En Naviera', color: 'bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200', icon: Anchor },
+  { value: 'DESGRUPE', label: 'Desgrupe', color: 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200', icon: PackageOpen },
+  { value: 'EN ADUANA', label: 'En Aduana', color: 'bg-pink-100 text-pink-700 border-pink-200 hover:bg-pink-200', icon: ShieldCheck },
+  { value: 'CLASIFICACION', label: 'Clasificación', color: 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200', icon: Layers },
+  { value: 'ALMACEN CENTRAL', label: 'Almacén Central', color: 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200', icon: Warehouse },
+  { value: 'TRASLADO PROVINCIA', label: 'Traslado Provincia', color: 'bg-teal-100 text-teal-700 border-teal-200 hover:bg-teal-200', icon: Truck },
+  { value: 'ALMACEN PROVINCIAL', label: 'Almacén Provincial', color: 'bg-cyan-100 text-cyan-700 border-cyan-200 hover:bg-cyan-200', icon: Warehouse },
+  { value: 'EN DISTRIBUCION', label: 'En Distribución', color: 'bg-teal-100 text-teal-700 border-teal-200 hover:bg-teal-200', icon: MapPin },
   { value: 'ENTREGADO', label: 'Entregado', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200', icon: FileCheck },
-  { value: 'PENDIENTE DESGRUPE', label: 'Pend. Desgrupe', color: 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200', icon: Clock },
 ];
 
 export function TrackingUpload() {
@@ -77,6 +92,7 @@ export function TrackingUpload() {
   const [filter, setFilter] = useState('');
   const [clearDialog, setClearDialog] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   // Edit dialog state
   const [editEntry, setEditEntry] = useState<TrackingEntry | null>(null);
@@ -147,6 +163,24 @@ export function TrackingUpload() {
     }
   };
 
+  const handleSyncSolvedCargo = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/solvedcargo', { method: 'POST' });
+      const json = await res.json();
+      if (json.ok) {
+        toast.success(`SolvedCargo: ${json.synced} envíos sincronizados (${json.created} nuevos, ${json.updated} actualizados)`);
+        fetchEntries();
+      } else {
+        toast.error(json.error || 'Error al sincronizar con SolvedCargo');
+      }
+    } catch {
+      toast.error('Error de conexión con SolvedCargo. Verifique su conexión a internet.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const openEditDialog = (entry: TrackingEntry) => {
     setEditEntry(entry);
     setEditEstado(entry.estado);
@@ -212,11 +246,19 @@ export function TrackingUpload() {
   const getEstadoColor = (estado: string) => {
     const e = estado.toUpperCase();
     if (e.includes('ENTREGADO')) return 'bg-emerald-100 text-emerald-700';
-    if (e.includes('TRANSITO') || e.includes('TRÁNSITO')) return 'bg-blue-100 text-blue-700';
-    if (e.includes('ADUANA')) return 'bg-purple-100 text-purple-700';
-    if (e.includes('PENDIENTE') || e.includes('DESGRUPE')) return 'bg-amber-100 text-amber-700';
-    if (e.includes('DISTRIBUCION')) return 'bg-cyan-100 text-cyan-700';
-    if (e.includes('EMBARCADO')) return 'bg-orange-100 text-orange-700';
+    if (e.includes('DISTRIBUCION') || e.includes('DISTRIBUCIÓN')) return 'bg-teal-100 text-teal-700';
+    if (e.includes('ALMACEN') && e.includes('PROVINCIAL')) return 'bg-cyan-100 text-cyan-700';
+    if (e.includes('ALMACEN') && e.includes('CENTRAL')) return 'bg-red-100 text-red-700';
+    if (e.includes('TRASLADO') || e.includes('PROVINCIA')) return 'bg-teal-100 text-teal-700';
+    if (e.includes('CLASIFICACION') || e.includes('CLASIFICACIÓN')) return 'bg-orange-100 text-orange-700';
+    if (e.includes('TRANSITO') || e.includes('TRÁNSITO')) return 'bg-sky-100 text-sky-700';
+    if (e.includes('ADUANA')) return 'bg-pink-100 text-pink-700';
+    if (e.includes('DESGRUPE')) return 'bg-purple-100 text-purple-700';
+    if (e.includes('NAVIERA')) return 'bg-violet-100 text-violet-700';
+    if (e.includes('CONTENEDOR') || e.includes('ESTIBA')) return 'bg-indigo-100 text-indigo-700';
+    if (e.includes('TRANSPORTE')) return 'bg-blue-100 text-blue-700';
+    if (e.includes('AGENCIA') || e.includes('PENDIENTE')) return 'bg-amber-100 text-amber-700';
+    if (e.includes('EMBARCADO')) return 'bg-amber-100 text-amber-700';
     return 'bg-zinc-100 text-zinc-700';
   };
 
@@ -263,6 +305,15 @@ export function TrackingUpload() {
                 <Upload className="h-4 w-4 mr-2" />
               )}
               Cargar Datos
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSyncSolvedCargo}
+              disabled={syncing}
+              className="border-blue-200 text-blue-700 hover:bg-blue-50 gap-2"
+            >
+              <Globe className={`h-4 w-4 ${syncing ? 'animate-pulse' : ''}`} />
+              {syncing ? 'Sincronizando SolvedCargo...' : 'Sincronizar SolvedCargo'}
             </Button>
             {entries.length > 0 && (
               <Button

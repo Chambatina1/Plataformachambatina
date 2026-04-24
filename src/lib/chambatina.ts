@@ -65,7 +65,7 @@ export const CAJAS: CajaItem[] = [
   { nombre: 'Caja Grande', dimensiones: '16×16×16"', pesoMaximo: 100, precio: 85 },
 ];
 
-// ---- Tracking Stages ----
+// ---- Tracking Stages (13 phases - 35 day logistics cycle) ----
 
 export interface EtapaTracking {
   estado: string;
@@ -73,14 +73,24 @@ export interface EtapaTracking {
   diasMax: number;
   descripcion: string;
   color: string;
+  icono?: string;
+  detalle?: string;
 }
 
 export const ETAPAS: EtapaTracking[] = [
-  { estado: 'EN AGENCIA', diasMin: 0, diasMax: 3, descripcion: 'El paquete está en nuestra agencia siendo procesado', color: '#f59e0b' },
-  { estado: 'EN TRANSITO', diasMin: 3, diasMax: 7, descripcion: 'El paquete está en camino hacia su destino', color: '#3b82f6' },
-  { estado: 'EN ADUANA', diasMin: 7, diasMax: 14, descripcion: 'El paquete está siendo procesado por aduana', color: '#8b5cf6' },
-  { estado: 'EN DISTRIBUCION', diasMin: 14, diasMax: 21, descripcion: 'El paquete está en distribución hacia su destino final', color: '#06b6d4' },
-  { estado: 'ENTREGADO', diasMin: 21, diasMax: 999, descripcion: 'El paquete fue entregado exitosamente', color: '#22c55e' },
+  { estado: 'EN AGENCIA', diasMin: 0, diasMax: 3, descripcion: 'Tu paquete fue recibido en nuestra agencia. Estamos preparando toda la documentación (facturas, packing list, certificados) para el embarque.', color: '#f59e0b' },
+  { estado: 'TRANSPORTE A NAVIERA', diasMin: 3, diasMax: 6, descripcion: 'Tu paquete viaja por tierra hacia el puerto de salida con nuestra flota trackerizada. Coordinamos la entrega prioritaria con la naviera.', color: '#3b82f6' },
+  { estado: 'EN CONTENEDOR', diasMin: 6, diasMax: 8, descripcion: 'Tu paquete está siendo estibado en el contenedor con plan de carga optimizado. Se instalan sensores de humedad y temperatura para proteger tu mercancía.', color: '#6366f1' },
+  { estado: 'EN TRANSITO', diasMin: 8, diasMax: 11, descripcion: 'El contenedor zarpó hacia Cuba. Recibimos actualizaciones de posición y clima para mantener un seguimiento preciso de tu envío.', color: '#0ea5e9' },
+  { estado: 'EN NAVIERA', diasMin: 11, diasMax: 13, descripcion: 'El buque llegó al puerto de Cuba. Tu paquete pasa por el proceso portuario de descarga y verificación de integridad.', color: '#8b5cf6' },
+  { estado: 'DESGRUPE', diasMin: 13, diasMax: 15, descripcion: 'El contenedor se está vaciando en el depósito fiscal. Cada bulto se escanea y verifica para asegurar que llega completo.', color: '#a855f7' },
+  { estado: 'EN ADUANA', diasMin: 15, diasMax: 20, descripcion: 'Tu paquete está en proceso de despacho aduanero. Se realiza la revisión documental y, si aplica, inspección física para su liberación.', color: '#ec4899' },
+  { estado: 'CLASIFICACION', diasMin: 20, diasMax: 22, descripcion: 'La mercancía se clasifica por provincia, urgencia y tipo de producto para preparar su distribución eficiente.', color: '#f97316' },
+  { estado: 'ALMACEN CENTRAL', diasMin: 22, diasMax: 24, descripcion: 'Tu paquete está en el almacén central (La Habana). Se arman pallets por provincia y se transfiere directamente para salida rápida.', color: '#ef4444' },
+  { estado: 'TRASLADO PROVINCIA', diasMin: 24, diasMax: 26, descripcion: 'Tu paquete viaja en camión hacia tu provincia. Cada vehículo tiene doble conductor para garantizar una entrega rápida y segura.', color: '#14b8a6' },
+  { estado: 'ALMACEN PROVINCIAL', diasMin: 26, diasMax: 28, descripcion: 'Tu paquete llegó al almacén de tu provincia. Se registra digitalmente y se prepara para la última fase de distribución.', color: '#06b6d4' },
+  { estado: 'EN DISTRIBUCION', diasMin: 28, diasMax: 35, descripcion: 'Tu paquete está en ruta de reparto hacia tu dirección final. El repartidor lo llevará directamente a tu puerta.', color: '#0d9488' },
+  { estado: 'ENTREGADO', diasMin: 35, diasMax: 999, descripcion: 'Tu paquete fue entregado exitosamente. Gracias por confiar en Chambatina.', color: '#22c55e' },
 ];
 
 export function estadoPorTiempo(fechaTexto: string): EtapaTracking {
@@ -93,12 +103,38 @@ export function estadoPorTiempo(fechaTexto: string): EtapaTracking {
   const diffMs = hoy.getTime() - fecha.getTime();
   const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   
-  for (const etapa of ETAPAS) {
-    if (dias >= etapa.diasMin && dias < etapa.diasMax) {
-      return etapa;
+  // Find the stage that matches the current day range
+  for (let i = 0; i < ETAPAS.length; i++) {
+    if (dias >= ETAPAS[i].diasMin && dias < ETAPAS[i].diasMax) {
+      return ETAPAS[i];
     }
   }
   return ETAPAS[ETAPAS.length - 1];
+}
+
+export function calcularProgreso(fechaTexto: string): { porcentaje: number; diasTranscurridos: number; diasTotales: number; etapaActual: EtapaTracking; etapaIndex: number } {
+  if (!fechaTexto) return { porcentaje: 0, diasTranscurridos: 0, diasTotales: 35, etapaActual: ETAPAS[0], etapaIndex: 0 };
+  
+  const fecha = new Date(fechaTexto);
+  if (isNaN(fecha.getTime())) return { porcentaje: 0, diasTranscurridos: 0, diasTotales: 35, etapaActual: ETAPAS[0], etapaIndex: 0 };
+  
+  const hoy = new Date();
+  const diasTranscurridos = Math.max(0, Math.floor((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24)));
+  const diasTotales = 35;
+  const porcentaje = Math.min(100, Math.round((diasTranscurridos / diasTotales) * 100));
+  
+  const etapaActual = estadoPorTiempo(fechaTexto);
+  const etapaIndex = ETAPAS.findIndex(e => e.estado === etapaActual.estado);
+  
+  return { porcentaje, diasTranscurridos, diasTotales, etapaActual, etapaIndex: Math.max(0, etapaIndex) };
+}
+
+export function estimarFechaEtapa(fechaRegistro: string, diasDesdeRegistro: number): string {
+  if (!fechaRegistro) return '';
+  const fecha = new Date(fechaRegistro);
+  if (isNaN(fecha.getTime())) return '';
+  fecha.setDate(fecha.getDate() + diasDesdeRegistro);
+  return fecha.toLocaleDateString('es-CU', { day: 'numeric', month: 'short' });
 }
 
 // ---- TSV Parser for Tracking Data ----
@@ -119,15 +155,22 @@ export function parsearTrackingTSV(texto: string): TrackingParsed[] {
   const lineas = texto.trim().split('\n').filter(line => line.trim().length > 0);
   const resultados: TrackingParsed[] = [];
 
-  // Estado keywords
+  // Estado keywords - mapped to 13 logistics stages
   const ESTADO_KEYWORDS = [
     { regex: /ENTREGADO/i, estado: 'ENTREGADO' },
     { regex: /EN DISTRIBUCION|EN DISTRIBUCIÓN|REPARTO/i, estado: 'EN DISTRIBUCION' },
-    { regex: /EN ADUANA/i, estado: 'EN ADUANA' },
-    { regex: /EN TRANSITO|EN TRÁNSITO|TRANSITO/i, estado: 'EN TRANSITO' },
-    { regex: /EN AGENCIA|RECIBIDO|PENDIENTE/i, estado: 'EN AGENCIA' },
-    { regex: /DESGRUPE/i, estado: 'PENDIENTE DESGRUPE' },
-    { regex: /EMBARCADO/i, estado: 'EMBARCADO' },
+    { regex: /ALMACEN PROVINCIAL/i, estado: 'ALMACEN PROVINCIAL' },
+    { regex: /TRASLADO PROVINCIA|TRASLADO A PROVINCIA/i, estado: 'TRASLADO PROVINCIA' },
+    { regex: /ALMACEN CENTRAL/i, estado: 'ALMACEN CENTRAL' },
+    { regex: /CLASIFICACION|CLASIFICACIÓN/i, estado: 'CLASIFICACION' },
+    { regex: /EN ADUANA|ADUANA/i, estado: 'EN ADUANA' },
+    { regex: /DESGRUPE|PENDIENTE DESGRUPE/i, estado: 'DESGRUPE' },
+    { regex: /EN NAVIERA|NAVIERA|PUERTO|ARRIBO/i, estado: 'EN NAVIERA' },
+    { regex: /EN TRANSITO|EN TRÁNSITO|RUMBO|NAVEGACION|NAVEGACIÓN/i, estado: 'EN TRANSITO' },
+    { regex: /CONTENEDOR|ESTIBA/i, estado: 'EN CONTENEDOR' },
+    { regex: /TRANSPORTE A NAVIERA|TRANSPORTE/i, estado: 'TRANSPORTE A NAVIERA' },
+    { regex: /EN AGENCIA|RECIBIDO|AGENCIA/i, estado: 'EN AGENCIA' },
+    { regex: /EMBARCADO/i, estado: 'EN AGENCIA' },
   ];
 
   // Helper: check if a column looks like a person name (2+ words, mostly letters)
@@ -213,7 +256,7 @@ export function parsearTrackingTSV(texto: string): TrackingParsed[] {
         }
       }
     }
-    if (!estado) estado = 'EMBARCADO';
+    if (!estado) estado = 'EN AGENCIA';
 
     // Find date column index to help with relative positioning
     const fechaIndex = fecha ? columnas.findIndex(c => c.includes(fecha!)) : -1;
@@ -310,14 +353,14 @@ export function normalizarCPK(texto: string): string {
   return texto.trim();
 }
 
-export function buscarPorCPK(cpk: string, entries: TrackingEntry[]): TrackingEntry | null {
+export function buscarPorCPK(cpk: string, entries: any[]): any {
   const normalized = normalizarCPK(cpk);
-  return entries.find(e => normalizarCPK(e.cpk) === normalized) || null;
+  return entries.find((e: any) => normalizarCPK(e.cpk) === normalized) || null;
 }
 
-export function buscarPorCarnet(carnet: string, entries: TrackingEntry[]): TrackingEntry[] {
+export function buscarPorCarnet(carnet: string, entries: any[]): any[] {
   const normalized = carnet.replace(/\s/g, '');
-  return entries.filter(e => e.carnetPrincipal && e.carnetPrincipal.replace(/\s/g, '').includes(normalized));
+  return entries.filter((e: any) => e.carnetPrincipal && e.carnetPrincipal.replace(/\s/g, '').includes(normalized));
 }
 
 // ---- Intent Detection for Chat ----
@@ -341,7 +384,7 @@ export function detectarIntencion(mensaje: string): DetectedIntent {
       const calculo = calcularEnvio(peso, tipo);
       return {
         intent: 'precio_peso',
-        data: { peso, tipo, ...calculo },
+        data: { ...calculo },
       };
     }
     if (/bicicleta|bici|bike/i.test(msg)) {
@@ -455,5 +498,5 @@ CAJAS DE ENVÍO:
 RASTREO DE PAQUETES:
 - Cada paquete tiene un número CPK único (ejemplo: CPK-0266228)
 - Se puede rastrear por número CPK o por carnet de identidad del destinatario
-- Estados: EN AGENCIA → EN TRANSITO → EN ADUANA → EN DISTRIBUCION → ENTREGADO
-- Tiempo estimado: 2-4 semanas dependiendo del destino`;
+- 13 fases de rastreo: EN AGENCIA → TRANSPORTE A NAVIERA → EN CONTENEDOR → EN TRANSITO → EN NAVIERA → DESGRUPE → EN ADUANA → CLASIFICACION → ALMACEN CENTRAL → TRASLADO PROVINCIA → ALMACEN PROVINCIAL → EN DISTRIBUCION → ENTREGADO
+- Tiempo estimado total: 35 días`;
