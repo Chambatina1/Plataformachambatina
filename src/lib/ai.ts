@@ -104,17 +104,27 @@ export async function chatCompletion(options: AICompletionOptions): Promise<stri
     const errorBody = await response.text();
     console.error(`[AI] API Error ${response.status}:`, errorBody);
 
+    // Try to parse structured error from API
+    let apiErrorMsg = '';
+    try {
+      const errJson = JSON.parse(errorBody);
+      apiErrorMsg = errJson?.error?.message || errJson?.error?.type || '';
+    } catch {}
+
     if (response.status === 401) {
       throw new Error(`API key inválida (${config.provider}). Verifica tu API key en Config.`);
     }
     if (response.status === 429) {
       throw new Error('Se excedió el límite de peticiones. Intenta en unos segundos.');
     }
-    if (response.status === 402 || response.status === 400) {
-      throw new Error('Error de facturación o cuota de la API. Verifica tu cuenta de ' + config.provider + '.');
+    if (response.status === 402 || apiErrorMsg.toLowerCase().includes('insufficient balance')) {
+      throw new Error('SALDO_INSUFICIENTE: Tu cuenta de ' + config.provider + ' no tiene saldo. Ve a platform.deepseek.com y recarga tu cuenta con créditos.');
+    }
+    if (response.status === 400) {
+      throw new Error('Error de cuota de la API: ' + (apiErrorMsg || 'Verifica tu cuenta de ' + config.provider + '.'));
     }
 
-    throw new Error(`Error de API (${response.status}): ${errorBody.substring(0, 200)}`);
+    throw new Error(`Error de API (${response.status}): ${(apiErrorMsg || errorBody).substring(0, 200)}`);
   }
 
   const data = await response.json();

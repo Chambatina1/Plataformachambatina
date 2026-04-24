@@ -225,8 +225,10 @@ export async function POST(request: NextRequest) {
       if (structuredData.peso && structuredData.calculo) {
         const c = structuredData.calculo;
         respuesta = `**Cálculo de envío:**\n\n- Peso: ${c.peso} lb\n- Tipo: ${c.tipo}\n- Total: **$${c.total.toFixed(2)}**\n\n¿Necesitas más información? Llámanos al **786-942-6904** (Geo) o **786-784-6421** (Adriana).`;
+      } else if (aiError.message.includes('SALDO_INSUFICIENTE')) {
+        respuesta = `Lo siento, el servicio de IA está temporalmente no disponible por un problema de saldo. El administrador ya fue notificado para recargar la cuenta.\n\nSi necesitas información urgente, puedes llamarnos al **786-942-6904** (Geo) o **786-784-6421** (Adriana).`;
       } else {
-        respuesta = `Tuve un problema temporal con el servicio de IA. Por favor intenta de nuevo en unos segundos.\n\nSi necesitas información urgente, puedes llamarnos al **786-942-6904** (Geo) o **786-784-6421** (Adriana).\n\nError: ${aiError.message}`;
+        respuesta = `Lo siento, tuve un problema temporal. Por favor intenta de nuevo en unos segundos.\n\nSi necesitas información urgente, puedes llamarnos al **786-942-6904** (Geo) o **786-784-6421** (Adriana).`;
       }
     }
 
