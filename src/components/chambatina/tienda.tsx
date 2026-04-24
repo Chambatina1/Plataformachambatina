@@ -113,11 +113,22 @@ export function Tienda() {
                         </div>
                         {product.descripcion && <CardDescription className="text-xs line-clamp-2">{product.descripcion}</CardDescription>}
                       </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="flex gap-2">
-                          <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-sm" onClick={() => handleComprar(product)}><ShoppingCart className="h-4 w-4 mr-1.5" />Comprar</Button>
-                          {product.tiktokUrl && <Button variant="outline" size="sm" className="shrink-0 text-pink-600 hover:text-pink-700 hover:bg-pink-50 border-pink-200" onClick={() => window.open(product.tiktokUrl!, '_blank')}><ExternalLink className="h-4 w-4" /></Button>}
-                        </div>
+                      <CardContent className="pt-0 space-y-2">
+                        {product.tiktokUrl && (
+                          <a
+                            href={product.tiktokUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Ver Link del Equipo
+                          </a>
+                        )}
+                        <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white text-sm" onClick={() => handleComprar(product)}>
+                          <ShoppingCart className="h-4 w-4 mr-1.5" />
+                          {product.tiktokUrl ? 'Llenar Ficha de Compra' : 'Comprar'}
+                        </Button>
                       </CardContent>
                     </Card>
                   );
