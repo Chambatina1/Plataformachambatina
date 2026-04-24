@@ -39,7 +39,7 @@ export function Home() {
   const [calcTipo, setCalcTipo] = useState<EnvioTipo>('equipo');
   const [config, setConfig] = useState({
     nombre_negocio: 'Chambatina',
-    direccion: '7523 Aloma Ave, Winter Park, FL 32792, Suite 112',
+    direccion: '2234 A Winter Woods Blvd, Winter Park, Unit 1000, FL 32792',
     telefono1: '786-942-6904',
     nombre_contacto1: 'Geo',
     telefono2: '786-784-6421',

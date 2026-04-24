@@ -38,7 +38,7 @@ const defaultData: PedidoData = {
   notas: '',
 };
 
-const CHAMBATINA_ADDRESS = '7523 Aloma Ave, Winter Park, FL 32792, Suite 112';
+const CHAMBATINA_ADDRESS = '2234 A Winter Woods Blvd, Winter Park, Unit 1000, FL 32792';
 
 export function PedidoForm() {
   const { selectedPedidoId, selectedProduct, setAdminView, adminView, mode, setCurrentView, setSelectedProduct } = useAppStore();
