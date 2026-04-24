@@ -91,7 +91,7 @@ export function Tienda() {
         <MapPin className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-semibold text-amber-900">Chambatina - Winter Park, FL, USA</p>
-          <p className="text-xs text-amber-700 mt-0.5">Haz clic en <strong>"Comprar"</strong> para llenar la ficha de compra. Tu pedido llega directo a nuestra oficina en USA.</p>
+          <p className="text-xs text-amber-700 mt-0.5">Selecciona <strong>"Lo compramos por ti"</strong> y nosotros nos encargamos. Tu pedido llega directo a nuestra oficina en USA.</p>
         </div>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -128,7 +128,7 @@ export function Tienda() {
                           className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
                         >
                           <ShoppingCart className="h-4 w-4 mr-1.5" />
-                          Comprar
+                          Lo compramos por ti
                         </button>
                         {product.tiktokUrl && (
                           <a
