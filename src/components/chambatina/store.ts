@@ -57,7 +57,7 @@ interface AppState {
 }
 
 const ADMIN_PASSWORD = 'chambatina2024';
-const STORAGE_KEY = 'chambatina-storage';
+const STORAGE_KEY = 'chambatina-storage-v2';
 
 // Safety: clear corrupted localStorage on load
 if (typeof window !== 'undefined') {
