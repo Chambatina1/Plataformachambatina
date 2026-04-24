@@ -122,7 +122,7 @@ export function Tienda() {
                         </div>
                         {product.descripcion && <CardDescription className="text-xs line-clamp-2">{product.descripcion}</CardDescription>}
                       </CardHeader>
-                      <CardContent className="pt-0">
+                      <CardContent className="pt-0 space-y-2">
                         <button
                           onClick={() => handleComprar(product)}
                           className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
@@ -130,6 +130,17 @@ export function Tienda() {
                           <ShoppingCart className="h-4 w-4 mr-1.5" />
                           Comprar
                         </button>
+                        {product.tiktokUrl && (
+                          <a
+                            href={product.tiktokUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Ver en TikTok Shop
+                          </a>
+                        )}
                       </CardContent>
                     </Card>
                   );
