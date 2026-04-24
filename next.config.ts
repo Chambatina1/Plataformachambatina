@@ -1,21 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // "standalone" es ignorado por Vercel (Vercel tiene su propio build)
+  // Se mantiene para compatibilidad si se despliega en un VPS propio
   output: "standalone",
   typescript: {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  // Límite de tamaño del body para Server Actions (10MB para soportar imágenes grandes)
+  // Límite de tamaño del body para Server Actions
   serverActions: {
-    bodySizeLimit: "10mb",
+    bodySizeLimit: "4mb",
   },
   turbopack: {
     root: process.cwd(),
-  },
-  // Configuración experimental para proxy de cliente con body grande
-  experimental: {
-    proxyClientMaxBodySize: "10mb",
   },
 };
 

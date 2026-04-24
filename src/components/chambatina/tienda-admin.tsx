@@ -104,7 +104,7 @@ export function TiendaAdmin() {
   const handleImageUpload = async (file: File) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) { toast.error(`Tipo no permitido (${file.type}). Usa JPG, PNG, GIF o WebP.`); return; }
-    if (file.size > 10 * 1024 * 1024) { toast.error(`Imagen muy grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo 10MB.`); return; }
+    if (file.size > 4 * 1024 * 1024) { toast.error(`Imagen muy grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo 4MB.`); return; }
     setUploadingImage(true);
     try {
       const formData = new FormData();
@@ -326,7 +326,7 @@ export function TiendaAdmin() {
                   ) : (
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center"><Upload className="h-5 w-5 text-amber-600" /></div>
-                      <div><p className="text-sm font-medium text-zinc-700">Haz clic o arrastra una imagen</p><p className="text-xs text-zinc-400 mt-0.5">JPG, PNG, GIF o WebP (máx. 10MB)</p></div>
+                      <div><p className="text-sm font-medium text-zinc-700">Haz clic o arrastra una imagen</p><p className="text-xs text-zinc-400 mt-0.5">JPG, PNG, GIF o WebP (máx. 4MB)</p></div>
                     </div>
                   )}
                 </div>
