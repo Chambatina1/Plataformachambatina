@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,8 @@ import {
   RefreshCw,
   Clock,
   Info,
+  Globe,
+  Zap,
 } from 'lucide-react';
 import { ETAPAS, calcularProgreso, estimarFechaEtapa } from '@/lib/chambatina';
 import { toast } from 'sonner';
@@ -50,6 +52,14 @@ interface TrackingResult {
     diasMin: number;
     diasMax: number;
   };
+  _source?: string;
+  _isNew?: boolean;
+}
+
+interface SearchMeta {
+  solvedcargoSource: boolean;
+  solvedcargoResults: number;
+  totalResults: number;
 }
 
 const SEARCH_HINTS = [
@@ -82,19 +92,28 @@ export function Rastreador() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [searchMeta, setSearchMeta] = useState<SearchMeta | null>(null);
+  const [searchPhase, setSearchPhase] = useState<'idle' | 'local' | 'solvedcargo'>('idle');
 
   const handleSearch = useCallback(async () => {
     if (!searchInput.trim()) return;
     setLoading(true);
     setSearched(true);
+    setSearchMeta(null);
+    setSearchPhase('local');
     try {
       const params = new URLSearchParams({ q: searchInput.trim() });
       const res = await fetch(`/api/tracking/buscar?${params}`);
       const json = await res.json();
       if (json.ok) {
-        setResults(json.data);
-        if (json.data.length === 0) {
+        setResults(json.data || []);
+        setSearchMeta(json.meta || null);
+        if ((json.data || []).length === 0) {
           toast.info('No se encontraron resultados. Intenta con otro número.');
+        } else if (json.meta?.solvedcargoSource) {
+          toast.success(`Encontrado en SolvedCargo: ${json.meta.solvedcargoResults} resultado(s)`, {
+            description: 'El envío se guardó automáticamente en tu base de datos.',
+          });
         }
       } else {
         toast.error(json.error || 'Error en la búsqueda');
@@ -105,6 +124,7 @@ export function Rastreador() {
       setResults([]);
     } finally {
       setLoading(false);
+      setSearchPhase('idle');
     }
   }, [searchInput]);
 
@@ -159,7 +179,8 @@ export function Rastreador() {
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Rastreador de Paquetes</h1>
         <p className="text-zinc-500 mt-1">
-          Busca por número CPK, solo el número, o carnet de identidad del destinatario o familiar
+          Busca por número CPK, solo el número, o carnet de identidad del destinatario o familiar.
+          Si no está en nuestra base, busca automáticamente en SolvedCargo.
         </p>
       </div>
 
@@ -209,10 +230,42 @@ export function Rastreador() {
         </CardContent>
       </Card>
 
-      {/* Loading */}
+      {/* Loading state - shows search phases */}
       {loading && (
         <div className="space-y-4 mb-6">
-          <Skeleton className="h-48 w-full rounded-xl" />
+          <Card className="border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="relative">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-500 ${
+                    searchPhase === 'solvedcargo'
+                      ? 'bg-blue-100'
+                      : 'bg-orange-100'
+                  }`}>
+                    {searchPhase === 'solvedcargo' ? (
+                      <Globe className="h-5 w-5 text-blue-500 animate-pulse" />
+                    ) : (
+                      <Search className="h-5 w-5 text-orange-500 animate-pulse" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-zinc-700">
+                    {searchPhase === 'solvedcargo'
+                      ? 'Buscando en SolvedCargo...'
+                      : 'Buscando en base de datos...'}
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    {searchPhase === 'solvedcargo'
+                      ? 'Consultando el sistema de SolvedCargo directamente'
+                      : 'Buscando coincidencias locales por CPK o carnet'}
+                  </p>
+                </div>
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <Skeleton className="h-32 w-full rounded-xl" />
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -222,14 +275,19 @@ export function Rastreador() {
           <CardContent className="p-8 text-center">
             <AlertCircle className="h-12 w-12 text-orange-300 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-zinc-700 mb-1">Sin resultados</h3>
-            <p className="text-sm text-zinc-400">
-              No se encontraron paquetes con ese número. Puedes intentar con:
+            <p className="text-sm text-zinc-400 mb-4">
+              No se encontraron paquetes con ese número ni en nuestra base de datos ni en SolvedCargo.
+              Puedes intentar con:
             </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <div className="mt-3 flex flex-wrap justify-center gap-2 mb-4">
               <Badge variant="outline" className="text-xs">Solo los dígitos del CPK</Badge>
               <Badge variant="outline" className="text-xs">Carnet del destinatario</Badge>
               <Badge variant="outline" className="text-xs">Carnet de un familiar</Badge>
+              <Badge variant="outline" className="text-xs">CPK con formato completo</Badge>
             </div>
+            <p className="text-xs text-zinc-400">
+              Si el envío es reciente, puede tardar unas horas en aparecer en el sistema.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -237,8 +295,16 @@ export function Rastreador() {
       {/* Results */}
       {!loading && results.length > 0 && (
         <div className="space-y-4 mb-6">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500">{results.length} resultado(s) encontrado(s)</p>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-zinc-500">{results.length} resultado(s) encontrado(s)</p>
+              {searchMeta?.solvedcargoSource && (
+                <Badge className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 border border-blue-200 gap-1">
+                  <Globe className="h-3 w-3" />
+                  Desde SolvedCargo
+                </Badge>
+              )}
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -253,14 +319,22 @@ export function Rastreador() {
           {results.map((result) => {
             const currentStage = getStageForEstado(result.etapaInfo?.estado || result.estado);
             const progreso = result.fecha ? calcularProgreso(result.fecha) : null;
+            const fromSolvedCargo = result._source === 'solvedcargo';
             return (
               <Card key={result.id} className="border-0 shadow-md overflow-hidden">
-                <CardHeader className="pb-3 bg-gradient-to-r from-orange-50 to-amber-50">
+                {/* SolvedCargo badge in header */}
+                <CardHeader className={`pb-3 ${fromSolvedCargo ? 'bg-gradient-to-r from-blue-50 to-indigo-50' : 'bg-gradient-to-r from-orange-50 to-amber-50'}`}>
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Package className="h-5 w-5 text-orange-600" />
                         {result.cpk}
+                        {fromSolvedCargo && (
+                          <Badge className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-600 border border-blue-200 gap-1">
+                            <Zap className="h-3 w-3" />
+                            Encontrado en SolvedCargo
+                          </Badge>
+                        )}
                       </CardTitle>
                       <CardDescription className="text-sm mt-1">
                         {result.consignatario && `Destinatario: ${result.consignatario}`}
@@ -343,7 +417,7 @@ export function Rastreador() {
                         const isCompleted = idx < currentStage;
                         const isCurrent = idx === currentStage;
                         const icon = ETAPA_ICONS[etapa.estado] || <CircleDot className="h-4 w-4" />;
-                        
+
                         return (
                           <motion.div
                             key={etapa.estado}

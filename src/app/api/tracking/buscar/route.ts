@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { normalizarCPK, estadoPorTiempo, ETAPAS } from '@/lib/chambatina';
+import { searchSolvedCargo, mapEstado } from '@/lib/solvedcargo';
 
 // Map real estado string to matching ETAPA for timeline display (13 stages)
 function matchEtapa(estado: string) {
@@ -29,12 +30,14 @@ function matchEtapa(estado: string) {
 }
 
 // GET /api/tracking/buscar?cpk=XXX or ?carnet=XXX or ?q=XXX (smart search)
+// When no local results found, automatically searches SolvedCargo
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const cpk = searchParams.get('cpk');
     const carnet = searchParams.get('carnet');
     const q = searchParams.get('q'); // Smart search - auto detect CPK or carnet
+    const noSolvedCargo = searchParams.get('noSolvedCargo') === 'true'; // Skip SolvedCargo search
 
     // Smart search: if q is provided, auto-detect what it is
     let searchCPK = cpk;
@@ -43,7 +46,7 @@ export async function GET(request: NextRequest) {
     if (q && !cpk && !carnet) {
       const trimmed = q.trim();
       const digitsOnly = trimmed.replace(/[^0-9]/g, '');
-      
+
       // Check if it contains CPK prefix
       if (/CPK/i.test(trimmed)) {
         searchCPK = trimmed;
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest) {
     // Search by CPK
     if (searchCPK) {
       const normalizedCPK = normalizarCPK(searchCPK);
-      
+
       // First try exact match
       const cpkResults = await db.trackingEntry.findMany({
         where: { cpk: normalizedCPK },
@@ -122,12 +125,12 @@ export async function GET(request: NextRequest) {
     // Search by carnet
     if (searchCarnet) {
       const normalizedCarnet = searchCarnet.replace(/[^0-9]/g, '');
-      
+
       // Search in TrackingEntry.carnetPrincipal
       const trackingResults = await db.trackingEntry.findMany({
         orderBy: { createdAt: 'desc' },
       });
-      
+
       const carnetTracking = trackingResults.filter(e => {
         if (!e.carnetPrincipal) return false;
         const eCarnet = e.carnetPrincipal.replace(/[^0-9]/g, '');
@@ -136,18 +139,18 @@ export async function GET(request: NextRequest) {
       for (const r of carnetTracking) {
         if (!seenIds.has(r.id)) { results.push(r); seenIds.add(r.id); }
       }
-      
+
       // Also search in Pedido.carnetDestinatario using digit-only comparison
       const allPedidos = await db.pedido.findMany({
         orderBy: { createdAt: 'desc' },
       });
-      
+
       const carnetPedidos = allPedidos.filter(p => {
         if (!p.carnetDestinatario) return false;
         const pCarnet = p.carnetDestinatario.replace(/[^0-9]/g, '');
         return pCarnet.includes(normalizedCarnet) || normalizedCarnet.includes(pCarnet);
       });
-      
+
       // Add pedidos as tracking-style results
       for (const p of carnetPedidos) {
         const alreadyExists = results.some(r => r.cpk === `PED-${p.id}`);
@@ -169,6 +172,68 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ============================================
+    // AUTO-SEARCH IN SOLVEDCARGO when no local results
+    // ============================================
+    let solvedcargoSource = false;
+    if (results.length === 0 && !noSolvedCargo) {
+      const searchQuery = q || searchCPK || searchCarnet || '';
+      const scResult = await searchSolvedCargo(searchQuery);
+
+      if (scResult.found && scResult.results.length > 0) {
+        solvedcargoSource = true;
+
+        // Save found results to local DB for future searches
+        for (const scItem of scResult.results) {
+          try {
+            const cpkNorm = normalizarCPK(scItem.cpk);
+            const estado = mapEstado(scItem.estado || '');
+
+            const existing = await db.trackingEntry.findFirst({ where: { cpk: cpkNorm } });
+
+            if (existing) {
+              await db.trackingEntry.update({
+                where: { id: existing.id },
+                data: {
+                  fecha: scItem.fecha || existing.fecha,
+                  estado: estado || existing.estado,
+                  descripcion: scItem.descripcion || existing.descripcion,
+                  embarcador: scItem.embarcador || existing.embarcador,
+                  consignatario: scItem.consignatario || existing.consignatario,
+                  carnetPrincipal: scItem.carnetPrincipal || existing.carnetPrincipal,
+                },
+              });
+              // Add the existing (now updated) entry
+              const updated = await db.trackingEntry.findUnique({ where: { id: existing.id } });
+              if (updated && !seenIds.has(updated.id)) {
+                results.push({ ...updated, _source: 'solvedcargo', _isNew: false });
+                seenIds.add(updated.id);
+              }
+            } else {
+              // Create new entry
+              const created = await db.trackingEntry.create({
+                data: {
+                  cpk: cpkNorm,
+                  fecha: scItem.fecha,
+                  estado: estado || 'EN AGENCIA',
+                  descripcion: scItem.descripcion,
+                  embarcador: scItem.embarcador,
+                  consignatario: scItem.consignatario,
+                  carnetPrincipal: scItem.carnetPrincipal,
+                  rawData: scItem.rawData,
+                },
+              });
+              results.push({ ...created, _source: 'solvedcargo', _isNew: true });
+            }
+          } catch (saveError) {
+            console.error('Error saving SolvedCargo result to local DB:', saveError);
+            // Add as unsaved result
+            results.push({ ...scItem, id: Date.now(), _source: 'solvedcargo', _isNew: true });
+          }
+        }
+      }
+    }
+
     // Add etapaInfo for timeline display
     results = (results || []).map(entry => {
       const matchedEtapa = matchEtapa(entry.estado);
@@ -180,7 +245,15 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ ok: true, data: results });
+    return NextResponse.json({
+      ok: true,
+      data: results,
+      meta: {
+        solvedcargoSource,
+        solvedcargoResults: results.filter(r => r._source === 'solvedcargo').length,
+        totalResults: results.length,
+      },
+    });
   } catch (error) {
     console.error('Error searching tracking:', error);
     return NextResponse.json({ ok: false, error: 'Error al buscar en rastreo' }, { status: 500 });
