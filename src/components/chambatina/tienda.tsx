@@ -87,11 +87,11 @@ export function Tienda() {
       </div>
 
       {/* USA location banner */}
-      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <MapPin className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+      <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+        <MapPin className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-blue-900">Chambatina - USA</p>
-          <p className="text-xs text-blue-700 mt-0.5">Si estás en Estados Unidos, los links externos pueden no estar disponibles en tu región. Usa el botón <strong>"Llenar Ficha de Compra"</strong> para comprar directamente con nosotros.</p>
+          <p className="text-sm font-semibold text-amber-900">Chambatina - USA</p>
+          <p className="text-xs text-amber-700 mt-0.5">Si el botón "Comprar" no funciona en tu región, usa <strong>"Llenar Ficha de Compra"</strong> para comprar directamente con nosotros. Ambas opciones te llegan a Chambatina.</p>
         </div>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -123,23 +123,31 @@ export function Tienda() {
                         {product.descripcion && <CardDescription className="text-xs line-clamp-2">{product.descripcion}</CardDescription>}
                       </CardHeader>
                       <CardContent className="pt-0 space-y-2">
-                        {product.tiktokUrl && (
+                        {product.tiktokUrl ? (
                           <a
                             href={product.tiktokUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
                           >
-                            <ExternalLink className="h-4 w-4" />
-                            Link del Equipo
+                            <ShoppingCart className="h-4 w-4 mr-1.5" />
+                            Comprar
+                          </a>
+                        ) : (
+                          <a
+                            href={`?comprar=${product.id}`}
+                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
+                          >
+                            <ShoppingCart className="h-4 w-4 mr-1.5" />
+                            Comprar
                           </a>
                         )}
                         <a
                           href={`?comprar=${product.id}`}
-                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
+                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200"
                         >
-                          <ShoppingCart className="h-4 w-4 mr-1.5" />
-                          Comprar Ahora
+                          <ExternalLink className="h-4 w-4" />
+                          Llenar Ficha de Compra
                         </a>
                       </CardContent>
                     </Card>
