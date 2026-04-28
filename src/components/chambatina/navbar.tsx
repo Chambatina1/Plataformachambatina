@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useAppStore, type PublicView, type AdminView } from './store';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
@@ -35,7 +35,7 @@ const publicNavItems: { view: PublicView; label: string; icon: typeof Home }[] =
 ];
 
 function PublicNavbar() {
-  const { currentView, setCurrentView, goToAdmin, currentUser, setShowRegisterDialog } = useAppStore();
+  const { currentView, setCurrentView, goToAdmin, currentUser, setCurrentUser, setShowRegisterDialog } = useAppStore();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const handleNav = (view: PublicView) => {
@@ -44,6 +44,28 @@ function PublicNavbar() {
   };
 
   const isActive = (view: PublicView) => currentView === view;
+
+  const handleUserLogout = () => {
+    setCurrentUser(null);
+  };
+
+  const registerVisit = useCallback((page: string) => {
+    if (!currentUser) return;
+    try {
+      fetch('/api/visits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id, page }),
+      });
+    } catch { /* silent */ }
+  }, [currentUser]);
+
+  // Track page visits
+  useEffect(() => {
+    if (currentUser) {
+      registerVisit('/' + currentView);
+    }
+  }, [currentView, currentUser, registerVisit]);
 
   return (
     <>
@@ -86,21 +108,22 @@ function PublicNavbar() {
                   </button>
                 );
               })}
-              {!currentUser ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowRegisterDialog(true)}
-                  className="ml-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                >
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Registrarse
-                </Button>
-              ) : (
-                <span className="ml-2 text-sm text-zinc-500 hidden lg:inline">
-                  {currentUser.nombre}
-                </span>
-              )}
+              {currentUser ? (
+                <div className="ml-2 flex items-center gap-2">
+                  <span className="text-sm text-zinc-500 hidden lg:inline">
+                    {currentUser.nombre}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleUserLogout}
+                    className="text-zinc-400 hover:text-red-500 hover:bg-red-50"
+                    title="Cerrar sesion"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : null}
               <Button
                 variant="ghost"
                 size="sm"
@@ -155,13 +178,13 @@ function PublicNavbar() {
                     })}
                   </nav>
                   <div className="p-2 border-t border-zinc-100 space-y-1">
-                    {!currentUser && (
+                    {currentUser && (
                       <button
-                        onClick={() => { setShowRegisterDialog(true); setSheetOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-orange-600 hover:bg-orange-50 transition-all duration-200"
+                        onClick={() => { handleUserLogout(); setSheetOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-all duration-200"
                       >
-                        <UserPlus className="h-5 w-5" />
-                        Registrarse
+                        <LogOut className="h-5 w-5" />
+                        Cerrar Sesion ({currentUser.nombre})
                       </button>
                     )}
                     <button

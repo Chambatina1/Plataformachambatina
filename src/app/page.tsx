@@ -6,6 +6,7 @@ import { useAppStore } from '@/components/chambatina/store';
 import { Navbar } from '@/components/chambatina/navbar';
 import { LoginDialog } from '@/components/chambatina/login-dialog';
 import { RegisterDialog } from '@/components/chambatina/register-dialog';
+import { LoginGate } from '@/components/chambatina/login-gate';
 import { Home } from '@/components/chambatina/home';
 import { Tienda } from '@/components/chambatina/tienda';
 import { PedidosList } from '@/components/chambatina/pedidos-list';
@@ -179,10 +180,21 @@ export default function Page() {
   const mode = useAppStore((s) => s.mode);
   const currentView = useAppStore((s) => s.currentView);
   const adminView = useAppStore((s) => s.adminView);
+  const currentUser = useAppStore((s) => s.currentUser);
   const goToComprar = useAppStore((s) => s.goToComprar);
   const setCurrentView = useAppStore((s) => s.setCurrentView);
   const [hasError, setHasError] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Show login gate if no user is logged in and not in admin mode
+  if (!currentUser && mode !== 'admin') {
+    return (
+      <>
+        <ThemeInjector />
+        <LoginGate />
+      </>
+    );
+  }
 
   // Handle ?comprar=ID query param to auto-open purchase form
   useEffect(() => {
