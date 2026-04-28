@@ -369,6 +369,7 @@ export function CompraPlataforma() {
     if (!form.telefonoSolicitante.trim()) errs.telefonoSolicitante = 'Requerido';
     if (!form.nombreDestinatario.trim()) errs.nombreDestinatario = 'Requerido';
     if (!form.telefonoDestinatario.trim()) errs.telefonoDestinatario = 'Requerido';
+    if (!form.carnetDestinatario.trim()) errs.carnetDestinatario = 'Requerido';
     if (!form.direccionDestinatario.trim()) errs.direccionDestinatario = 'Requerido';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -995,15 +996,16 @@ export function CompraPlataforma() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="carnetDest" className="text-xs font-medium text-zinc-500">Carnet de identidad (opcional)</Label>
+                  <Label htmlFor="carnetDest" className="text-xs font-medium">Carnet de identidad *</Label>
                   <Input
                     id="carnetDest"
                     value={form.carnetDestinatario}
                     onChange={(e) => updateField('carnetDestinatario', e.target.value)}
-                    placeholder="Solo si lo tienes a mano"
-                    className="h-12 text-sm"
+                    placeholder="Numero de carnet"
+                    className={`h-12 text-sm ${errors.carnetDestinatario ? 'border-red-500' : ''}`}
                     enterKeyHint="next"
                   />
+                  {errors.carnetDestinatario && <p className="text-xs text-red-500">{errors.carnetDestinatario}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="dirDest" className="text-xs font-medium">Direccion completa *</Label>

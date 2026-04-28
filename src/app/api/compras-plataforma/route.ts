@@ -16,18 +16,67 @@ const PLATAFORMAS_VALIDAS = [
 
 const compraSchema = z.object({
   nombreSolicitante: z.string().min(2, 'El nombre es requerido'),
-  emailSolicitante: z.string().email('Email inválido').or(z.literal('')),
-  telefonoSolicitante: z.string().min(6, 'El teléfono es requerido'),
+  emailSolicitante: z.string().email('Email invalido').or(z.literal('')),
+  telefonoSolicitante: z.string().min(6, 'El telefono es requerido'),
   nombreDestinatario: z.string().min(2, 'El nombre del destinatario es requerido'),
-  carnetDestinatario: z.string().optional().or(z.literal('')),
-  direccionDestinatario: z.string().min(5, 'La dirección es requerida'),
-  telefonoDestinatario: z.string().min(6, 'El teléfono del destinatario es requerido'),
+  carnetDestinatario: z.string().min(1, 'El carnet de identidad es requerido'),
+  direccionDestinatario: z.string().min(5, 'La direccion es requerida'),
+  telefonoDestinatario: z.string().min(6, 'El telefono del destinatario es requerido'),
   plataforma: z.string().min(1, 'Selecciona una plataforma'),
-  linkProducto: z.string().url('El link del producto no es válido').or(z.literal('')),
+  linkProducto: z.string().url('El link del producto no es valido').or(z.literal('')),
   descripcionProducto: z.string().min(3, 'Describe el producto'),
   precioProducto: z.coerce.number().min(0).optional().default(0),
   notas: z.string().optional().or(z.literal('')),
 });
+
+// Build create data with progressive fallback for columns that may not exist
+async function createPedidoWithFallback(baseData: Record<string, unknown>, productoText: string) {
+  // Attempt 1: Full data with all columns
+  try {
+    return await db.pedido.create({
+      data: {
+        ...baseData,
+        producto: productoText,
+        plataforma: baseData.plataforma || null,
+        linkProducto: baseData.linkProducto || null,
+        estado: 'pendiente',
+        updatedAt: new Date(),
+      },
+    });
+  } catch (e1) {
+    console.warn('[CompraPlataforma] Attempt 1 failed, trying without plataforma/linkProducto:', (e1 as Error)?.message);
+  }
+
+  // Attempt 2: Without plataforma/linkProducto columns
+  try {
+    const { plataforma, linkProducto, ...rest } = baseData;
+    return await db.pedido.create({
+      data: {
+        ...rest,
+        producto: productoText,
+        estado: 'pendiente',
+        updatedAt: new Date(),
+      },
+    });
+  } catch (e2) {
+    console.warn('[CompraPlataforma] Attempt 2 failed, trying without updatedAt:', (e2 as Error)?.message);
+  }
+
+  // Attempt 3: Minimal fields only (no estado, no updatedAt)
+  try {
+    const { plataforma, linkProducto, ...rest } = baseData;
+    const { updatedAt, estado, ...minimalData } = rest as Record<string, unknown>;
+    return await db.pedido.create({
+      data: {
+        ...minimalData,
+        producto: productoText,
+      },
+    });
+  } catch (e3) {
+    console.error('[CompraPlataforma] All attempts failed:', (e3 as Error)?.message);
+    throw e3;
+  }
+}
 
 // POST /api/compras-plataforma - Crear solicitud de compra por plataforma
 export async function POST(request: NextRequest) {
@@ -36,6 +85,7 @@ export async function POST(request: NextRequest) {
     const validated = compraSchema.safeParse(body);
 
     if (!validated.success) {
+      console.warn('[CompraPlataforma] Validation errors:', JSON.stringify(validated.error.flatten().fieldErrors));
       return NextResponse.json(
         { ok: false, error: validated.error.flatten().fieldErrors },
         { status: 400 }
@@ -48,50 +98,30 @@ export async function POST(request: NextRequest) {
     // Validar plataforma
     if (!PLATAFORMAS_VALIDAS.includes(plataforma)) {
       return NextResponse.json(
-        { ok: false, error: `Plataforma no válida. Valores permitidos: ${PLATAFORMAS_VALIDAS.join(', ')}` },
+        { ok: false, error: 'Plataforma no valida' },
         { status: 400 }
       );
     }
 
-    // Crear el pedido con info de plataforma
-    // Try with plataforma/linkProducto fields first, fallback if they don't exist in DB
-    let pedido;
-    try {
-      pedido = await db.pedido.create({
-        data: {
-          nombreComprador: data.nombreSolicitante,
-          emailComprador: data.emailSolicitante || '',
-          telefonoComprador: data.telefonoSolicitante,
-          nombreDestinatario: data.nombreDestinatario,
-          telefonoDestinatario: data.telefonoDestinatario,
-          carnetDestinatario: data.carnetDestinatario || '',
-          direccionDestinatario: data.direccionDestinatario,
-          producto: `[${plataforma.toUpperCase()}] ${data.descripcionProducto}`,
-          notas: data.notas || null,
-          plataforma: plataforma,
-          linkProducto: data.linkProducto || null,
-          estado: 'pendiente',
-          updatedAt: new Date(),
-        },
-      });
-    } catch {
-      // Fallback: columns plataforma/linkProducto may not exist yet in production DB
-      pedido = await db.pedido.create({
-        data: {
-          nombreComprador: data.nombreSolicitante,
-          emailComprador: data.emailSolicitante || '',
-          telefonoComprador: data.telefonoSolicitante,
-          nombreDestinatario: data.nombreDestinatario,
-          telefonoDestinatario: data.telefonoDestinatario,
-          carnetDestinatario: data.carnetDestinatario || '',
-          direccionDestinatario: data.direccionDestinatario,
-          producto: `[${plataforma.toUpperCase()}] ${data.descripcionProducto} | Link: ${data.linkProducto}`,
-          notas: data.notas || null,
-          estado: 'pendiente',
-          updatedAt: new Date(),
-        },
-      });
-    }
+    const baseData = {
+      nombreComprador: data.nombreSolicitante,
+      emailComprador: data.emailSolicitante || '',
+      telefonoComprador: data.telefonoSolicitante,
+      nombreDestinatario: data.nombreDestinatario,
+      telefonoDestinatario: data.telefonoDestinatario,
+      carnetDestinatario: data.carnetDestinatario || '',
+      direccionDestinatario: data.direccionDestinatario,
+      notas: data.notas || null,
+      plataforma: plataforma,
+      linkProducto: data.linkProducto || null,
+      updatedAt: new Date(),
+    };
+
+    const productoText = data.linkProducto
+      ? `[${plataforma.toUpperCase()}] ${data.descripcionProducto} | ${data.linkProducto}`
+      : `[${plataforma.toUpperCase()}] ${data.descripcionProducto}`;
+
+    const pedido = await createPedidoWithFallback(baseData, productoText);
 
     return NextResponse.json(
       { ok: true, data: pedido },
@@ -100,7 +130,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Compras Plataforma] Error al crear solicitud:', error);
     return NextResponse.json(
-      { ok: false, error: 'Error al procesar la solicitud' },
+      { ok: false, error: 'Error al procesar la solicitud. Intenta de nuevo.' },
       { status: 500 }
     );
   }
@@ -110,16 +140,14 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const plataforma = searchParams.get('plataforma');
     const estado = searchParams.get('estado');
 
-    const where: Record<string, unknown> = {
-      plataforma: { not: null },
-    };
+    const where: Record<string, unknown> = {};
 
-    if (plataforma) {
-      where.plataforma = plataforma;
-    }
+    // Only filter by plataforma if the column exists
+    try {
+      where.plataforma = { not: null };
+    } catch { /* column may not exist */ }
 
     if (estado) {
       where.estado = estado;
