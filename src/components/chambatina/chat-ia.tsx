@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from './store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card } from '@/components/ui/card';
 import { Send, Loader2, MessageCircle, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,11 +33,16 @@ export function ChatIA() {
   const [sessionId] = useState(generateSessionId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    // Small delay to let React render the new message first
+    const timer = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timer);
   }, [messages, loading]);
 
   const sendMessage = async (text: string) => {
@@ -68,7 +72,11 @@ export function ChatIA() {
       }]);
     } finally {
       setLoading(false);
-      inputRef.current?.focus();
+      // Ensure input is visible and focused after response
+      setTimeout(() => {
+        scrollToBottom();
+        inputRef.current?.focus();
+      }, 100);
     }
   };
 
@@ -130,7 +138,7 @@ export function ChatIA() {
 
       <Card className="flex-1 flex flex-col border-0 shadow-md overflow-hidden min-h-0">
         {/* Messages Area */}
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 scroll-smooth">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
               <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-4">
@@ -212,10 +220,12 @@ export function ChatIA() {
               </div>
             </motion.div>
           )}
-        </ScrollArea>
+          {/* Invisible anchor to scroll to */}
+          <div ref={messagesEndRef} />
+        </div>
 
-        {/* Input */}
-        <div className="p-3 border-t bg-zinc-50 shrink-0">
+        {/* Input - always visible at bottom with sticky behavior */}
+        <div className="p-3 border-t bg-zinc-50 shrink-0 sticky bottom-0 z-10">
           <form
             onSubmit={(e) => {
               e.preventDefault();
