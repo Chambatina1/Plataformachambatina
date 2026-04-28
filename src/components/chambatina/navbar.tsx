@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Menu,
   Lock,
+  Handshake,
   LogOut,
   Globe,
   BarChart3,
@@ -30,6 +31,7 @@ import {
 const publicNavItems: { view: PublicView; label: string; icon: typeof Home }[] = [
   { view: 'home', label: 'Inicio', icon: Home },
   { view: 'tienda', label: 'Tienda', icon: ShoppingBag },
+  { view: 'servicios', label: 'Servicios', icon: Handshake },
   { view: 'rastreador', label: 'Rastreador', icon: Search },
   { view: 'chat', label: 'Chat IA', icon: MessageCircle },
 ];
@@ -243,6 +245,7 @@ const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3 }[
   { view: 'pedidos', label: 'Pedidos', icon: ClipboardList },
   { view: 'tracking', label: 'Tracking', icon: Database },
   { view: 'tienda-admin', label: 'Tienda', icon: Store },
+  { view: 'servicios-admin', label: 'Servicios', icon: Handshake },
   { view: 'ai-training', label: 'IA Chat', icon: Brain },
   { view: 'apariencia', label: 'Apariencia', icon: Palette },
   { view: 'users', label: 'Usuarios', icon: Users },

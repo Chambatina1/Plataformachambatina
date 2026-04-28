@@ -122,6 +122,31 @@ model User {
   updatedAt    DateTime?   @default(now()) @db.Timestamp(6)
   EmailLog     EmailLog[]
   visits       UserVisit[]
+  services     ServiceListing[]
+}
+
+model ServiceListing {
+  id          Int      @id @default(autoincrement())
+  tipo        String   @default("oferta") // "oferta" o "necesidad"
+  titulo      String
+  descripcion String?
+  categoria   String   @default("general")
+  ciudad      String?
+  precio      String?  // texto libre: "$20", "Negociable", "Gratis"
+  contacto    String?  // telefono, whatsapp, instagram, etc.
+  imagenUrl   String?
+  userId      Int
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tipo])
+  @@index([categoria])
+  @@index([userId])
+  @@index([activo])
+  @@index([createdAt])
 }
 
 model UserVisit {

@@ -21,6 +21,7 @@ import { TiendaAdmin } from '@/components/chambatina/tienda-admin';
 import { AITrainingPanel } from '@/components/chambatina/ai-training-panel';
 import { AparienciaPanel } from '@/components/chambatina/apariencia-panel';
 import { UsersPanel } from '@/components/chambatina/users-panel';
+import { Servicios } from '@/components/chambatina/servicios';
 import { Button } from '@/components/ui/button';
 
 // Error-safe component wrapper
@@ -232,6 +233,7 @@ export default function Page() {
         case 'tienda': return <Tienda />;
         case 'rastreador': return <Rastreador />;
         case 'chat': return <ChatIA />;
+        case 'servicios': return <Servicios />;
         case 'pedido-public': return <PedidoForm />;
         default: return <Home />;
       }
@@ -249,6 +251,7 @@ export default function Page() {
         case 'apariencia': return <AparienciaPanel />;
         case 'users': return <UsersPanel />;
         case 'emails': return <ConfigPanel />;
+        case 'servicios-admin': return <Servicios />;
         default: return <AdminDashboard />;
       }
     }
