@@ -423,7 +423,7 @@ export function UsersPanel() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-9 w-9 p-0 text-zinc-500 hover:text-amber-600"
+                                className="h-10 w-10 p-0 text-zinc-500 hover:text-amber-600 touch-manipulation"
                                 onClick={(e) => { e.stopPropagation(); setSelectedUser(user); }}
                               >
                                 <Eye className="h-4 w-4" />
@@ -431,12 +431,12 @@ export function UsersPanel() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className={`h-9 w-9 p-0 ${
+                                className={`h-10 w-10 p-0 touch-manipulation ${
                                   user.isActive
                                     ? 'text-zinc-500 hover:text-red-600 hover:bg-red-50'
                                     : 'text-zinc-500 hover:text-emerald-600 hover:bg-emerald-50'
                                 }`}
-                                onClick={(e) => { e.stopPropagation(); toggleActive(user); }}
+                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleActive(user); }}
                                 disabled={togglingId === user.id}
                               >
                                 {togglingId === user.id ? (
@@ -727,17 +727,24 @@ export function UsersPanel() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className={`flex-1 font-medium ${
+                  className={`flex-1 font-medium min-h-[44px] ${
                     selectedUser.isActive
                       ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
                       : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
                   }`}
-                  onClick={() => {
-                    toggleActive(selectedUser);
+                  disabled={togglingId === selectedUser.id}
+                  onClick={async () => {
+                    const userId = selectedUser.id;
+                    await toggleActive(selectedUser);
                     setSelectedUser(null);
                   }}
                 >
-                  {selectedUser.isActive ? (
+                  {togglingId === selectedUser.id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : selectedUser.isActive ? (
                     <>
                       <UserX className="h-4 w-4 mr-2" />
                       Desactivar

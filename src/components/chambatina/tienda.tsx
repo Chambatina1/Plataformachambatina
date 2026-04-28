@@ -165,7 +165,7 @@ export function Tienda() {
                 </div>
                 <Button
                   onClick={() => setCurrentView('compra-plataforma')}
-                  className="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-bold px-6 py-6 text-base shadow-lg shadow-orange-500/30 shrink-0 flex items-center gap-2"
+                  className="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-bold px-6 py-5 sm:py-6 text-base shadow-lg shadow-orange-500/30 shrink-0 flex items-center gap-2 min-h-[48px] sm:min-h-[56px] touch-manipulation"
                 >
                   <Link2 className="h-5 w-5" />
                   Comprar Ahora
@@ -228,7 +228,7 @@ export function Tienda() {
                         {/* Primary: Lo compramos por ti */}
                         <button
                           onClick={() => handleComprar(product)}
-                          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white"
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white min-h-[44px] touch-manipulation"
                         >
                           <ShoppingCart className="h-4 w-4 mr-1.5" />
                           Lo compramos por ti
@@ -243,7 +243,7 @@ export function Tienda() {
                                 href={link.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-semibold transition-all text-white shadow-sm bg-gradient-to-r ${link.gradient} hover:opacity-90`}
+                                className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-xs font-semibold transition-all text-white shadow-sm bg-gradient-to-r ${link.gradient} hover:opacity-90 min-h-[40px] touch-manipulation`}
                               >
                                 <span className="font-bold text-[10px]">{link.icon}</span>
                                 Ver en {link.nombre}

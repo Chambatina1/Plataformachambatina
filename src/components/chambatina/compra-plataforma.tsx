@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from './store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,11 @@ import {
   ExternalLink,
   AlertCircle,
   Sparkles,
+  Clipboard,
+  ScanSearch,
+  Lock,
+  BadgeCheck,
+  Timer,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,12 +37,12 @@ interface PlataformaConfig {
   id: string;
   nombre: string;
   icon: string;
-  color: string;
   bgGradient: string;
   borderColor: string;
   hoverBg: string;
   placeholder: string;
   example: string;
+  domains: string[];
 }
 
 const PLATAFORMAS: PlataformaConfig[] = [
@@ -45,91 +50,109 @@ const PLATAFORMAS: PlataformaConfig[] = [
     id: 'tiktok',
     nombre: 'TikTok Shop',
     icon: 'TT',
-    color: 'text-zinc-900',
     bgGradient: 'from-zinc-800 via-zinc-900 to-black',
     borderColor: 'border-zinc-700',
     hoverBg: 'hover:from-zinc-700 hover:via-zinc-800 hover:to-zinc-900',
     placeholder: 'Pega el link del producto de TikTok Shop',
     example: 'https://www.tiktok.com/...',
+    domains: ['tiktok.com', 'tiktok.shop'],
   },
   {
     id: 'amazon',
     nombre: 'Amazon',
     icon: 'AZ',
-    color: 'text-orange-900',
     bgGradient: 'from-orange-500 to-amber-600',
     borderColor: 'border-orange-400',
     hoverBg: 'hover:from-orange-600 hover:to-amber-700',
     placeholder: 'Pega el link del producto de Amazon',
     example: 'https://www.amazon.com/dp/...',
+    domains: ['amazon.com', 'amazon.es', 'amazon.mx', 'amzn.to'],
   },
   {
     id: 'aliexpress',
     nombre: 'AliExpress',
     icon: 'AL',
-    color: 'text-red-800',
     bgGradient: 'from-red-500 to-red-700',
     borderColor: 'border-red-400',
     hoverBg: 'hover:from-red-600 hover:to-red-800',
     placeholder: 'Pega el link del producto de AliExpress',
     example: 'https://www.aliexpress.com/item/...',
+    domains: ['aliexpress.com', 'aliexpress.us'],
   },
   {
     id: 'shein',
     nombre: 'SHEIN',
     icon: 'SH',
-    color: 'text-zinc-900',
     bgGradient: 'from-zinc-800 to-black',
     borderColor: 'border-zinc-600',
     hoverBg: 'hover:from-zinc-700 hover:to-zinc-900',
     placeholder: 'Pega el link del producto de SHEIN',
     example: 'https://www.shein.com/...',
+    domains: ['shein.com', 'shein.us'],
   },
   {
     id: 'mercadolibre',
     nombre: 'MercadoLibre',
     icon: 'ML',
-    color: 'text-yellow-700',
     bgGradient: 'from-yellow-400 to-yellow-500',
     borderColor: 'border-yellow-300',
     hoverBg: 'hover:from-yellow-500 hover:to-yellow-600',
     placeholder: 'Pega el link del producto de MercadoLibre',
     example: 'https://www.mercadolibre.com/...',
+    domains: ['mercadolibre.com', 'mercadolivre.com.br'],
   },
   {
     id: 'temu',
     nombre: 'Temu',
     icon: 'TM',
-    color: 'text-orange-800',
     bgGradient: 'from-orange-400 to-orange-600',
     borderColor: 'border-orange-300',
     hoverBg: 'hover:from-orange-500 hover:to-orange-700',
     placeholder: 'Pega el link del producto de Temu',
     example: 'https://www.temu.com/...',
+    domains: ['temu.com'],
   },
   {
     id: 'ebay',
     nombre: 'eBay',
     icon: 'EB',
-    color: 'text-blue-800',
     bgGradient: 'from-blue-500 to-blue-700',
     borderColor: 'border-blue-400',
     hoverBg: 'hover:from-blue-600 hover:to-blue-800',
     placeholder: 'Pega el link del producto de eBay',
     example: 'https://www.ebay.com/itm/...',
+    domains: ['ebay.com', 'ebay.es'],
   },
   {
     id: 'otro',
     nombre: 'Otra Plataforma',
-    icon: '...',
-    color: 'text-zinc-700',
+    icon: '+',
     bgGradient: 'from-zinc-400 to-zinc-500',
     borderColor: 'border-zinc-300',
     hoverBg: 'hover:from-zinc-500 hover:to-zinc-600',
     placeholder: 'Pega el link del producto',
     example: 'https://...',
+    domains: [],
   },
 ];
+
+// Auto-detect platform from a URL
+function detectPlatformFromUrl(url: string): PlataformaConfig | null {
+  try {
+    const lower = url.toLowerCase().trim();
+    if (!lower.startsWith('http')) return null;
+    const hostname = new URL(lower).hostname.replace('www.', '');
+    for (const p of PLATAFORMAS) {
+      if (p.id === 'otro') continue;
+      for (const domain of p.domains) {
+        if (hostname === domain || hostname.endsWith('.' + domain)) return p;
+      }
+    }
+    return PLATAFORMAS.find(p => p.id === 'otro') || null;
+  } catch {
+    return null;
+  }
+}
 
 interface FormData {
   plataforma: string;
@@ -146,8 +169,6 @@ interface FormData {
   notas: string;
 }
 
-const CHAMBATINA_ADDRESS = '2234 A Winter Woods Blvd, Winter Park, Unit 1000, FL 32792';
-
 export function CompraPlataforma() {
   const { setCurrentView, currentUser } = useAppStore();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -156,6 +177,10 @@ export function CompraPlataforma() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [submitted, setSubmitted] = useState(false);
   const [pedidoId, setPedidoId] = useState<number | null>(null);
+  const [quickLink, setQuickLink] = useState('');
+  const [pasting, setPasting] = useState(false);
+  const [detectedPlatform, setDetectedPlatform] = useState<PlataformaConfig | null>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<FormData>({
     plataforma: '',
@@ -193,6 +218,65 @@ export function CompraPlataforma() {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
+
+  // Quick link handler - detect platform and auto-advance
+  const handleQuickLinkSubmit = useCallback(() => {
+    const url = quickLink.trim();
+    if (!url) return;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      toast.error('El link debe comenzar con http:// o https://');
+      return;
+    }
+    const detected = detectPlatformFromUrl(url);
+    if (detected) {
+      setSelectedPlataforma(detected);
+      setForm((prev) => ({
+        ...prev,
+        plataforma: detected.id,
+        linkProducto: url,
+      }));
+      setStep(2);
+      toast.success(`Plataforma detectada: ${detected.nombre}`);
+    } else {
+      toast.error('No se pudo detectar la plataforma. Selecciona una manualmente.');
+    }
+  }, [quickLink]);
+
+  // Clipboard paste
+  const handlePasteFromClipboard = async () => {
+    setPasting(true);
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.startsWith('http')) {
+          setQuickLink(text);
+          const detected = detectPlatformFromUrl(text);
+          if (detected) {
+            setDetectedPlatform(detected);
+          }
+          toast.success('Link pegado del portapapeles');
+        } else {
+          toast.error('No se encontro un link valido en el portapapeles');
+        }
+      } else {
+        toast.error('Tu navegador no permite acceso al portapapeles. Pega el link manualmente.');
+      }
+    } catch {
+      toast.error('No se pudo acceder al portapapeles. Pega el link manualmente.');
+    } finally {
+      setPasting(false);
+    }
+  };
+
+  // Watch quickLink for auto-detection
+  useEffect(() => {
+    if (quickLink.trim().startsWith('http')) {
+      const detected = detectPlatformFromUrl(quickLink);
+      setDetectedPlatform(detected);
+    } else {
+      setDetectedPlatform(null);
+    }
+  }, [quickLink]);
 
   const validateStep2 = (): boolean => {
     const errs: Partial<Record<keyof FormData, string>> = {};
@@ -304,20 +388,20 @@ export function CompraPlataforma() {
                 <Truck className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-blue-700 leading-relaxed">
                   Chambatina procesara tu compra y te informara el estado por WhatsApp.
-                  Puedes rastrear tu pedido desde la seccion "Rastreador".
+                  Puedes rastrear tu pedido desde la seccion &quot;Rastreador&quot;.
                 </p>
               </div>
             </CardContent>
           </Card>
-          <div className="flex gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
               onClick={() => setCurrentView('rastreador')}
-              className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-8"
+              className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-8 min-h-[48px]"
             >
               <Truck className="h-4 w-4 mr-2" />
               Rastrear Pedido
             </Button>
-            <Button variant="outline" onClick={() => setCurrentView('tienda')}>
+            <Button variant="outline" onClick={() => setCurrentView('tienda')} className="min-h-[48px]">
               Volver a la Tienda
             </Button>
           </div>
@@ -335,7 +419,7 @@ export function CompraPlataforma() {
     >
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={handleGoBack}>
+        <Button variant="ghost" size="icon" onClick={handleGoBack} className="touch-manipulation">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
@@ -349,7 +433,7 @@ export function CompraPlataforma() {
       </div>
 
       {/* Progress Steps */}
-      <div className="flex items-center gap-2 mb-8">
+      <div className="flex items-center gap-2 mb-6">
         {[
           { num: 1, label: 'Plataforma' },
           { num: 2, label: 'Producto' },
@@ -398,6 +482,85 @@ export function CompraPlataforma() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
+            {/* Quick Paste Link - Hero Section */}
+            <Card className="border-0 shadow-lg mb-6 overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-800 to-black">
+              <CardContent className="p-5 sm:p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-lg shadow-orange-500/20">
+                    <LinkIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Pega tu link y listo</h2>
+                    <p className="text-zinc-400 text-xs">Detectamos la plataforma automaticamente</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <ScanSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                      <Input
+                        ref={linkInputRef}
+                        value={quickLink}
+                        onChange={(e) => setQuickLink(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleQuickLinkSubmit(); }}
+                        placeholder="Pega aqui el link del producto..."
+                        className="pl-10 pr-4 bg-white/10 border-white/20 text-white placeholder:text-zinc-500 focus:border-amber-400 h-12 text-sm"
+                        type="url"
+                        enterKeyHint="go"
+                      />
+                    </div>
+                    <Button
+                      onClick={handlePasteFromClipboard}
+                      disabled={pasting}
+                      variant="outline"
+                      className="h-12 px-4 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white shrink-0 touch-manipulation"
+                    >
+                      {pasting ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Clipboard className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Auto-detected platform indicator */}
+                  {detectedPlatform && quickLink.trim().startsWith('http') && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-2"
+                    >
+                      <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${detectedPlatform.bgGradient} flex items-center justify-center text-white font-bold text-[9px]`}>
+                        {detectedPlatform.icon}
+                      </div>
+                      <span className="text-xs text-emerald-400 font-medium">
+                        Detectado: {detectedPlatform.nombre}
+                      </span>
+                      <BadgeCheck className="h-4 w-4 text-emerald-400" />
+                    </motion.div>
+                  )}
+
+                  <Button
+                    onClick={handleQuickLinkSubmit}
+                    disabled={!quickLink.trim() || !quickLink.trim().startsWith('http')}
+                    className="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-bold text-base h-12 shadow-lg shadow-orange-500/20 touch-manipulation"
+                  >
+                    <ShoppingBag className="h-5 w-5 mr-2" />
+                    Continuar con este link
+                    <ChevronRight className="h-5 w-5 ml-1" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 h-px bg-zinc-200" />
+              <span className="text-xs text-zinc-400 font-medium">o selecciona la plataforma</span>
+              <div className="flex-1 h-px bg-zinc-200" />
+            </div>
+
             <p className="text-sm font-medium text-zinc-700 mb-4">
               Selecciona la plataforma donde encontraste el producto:
             </p>
@@ -408,21 +571,37 @@ export function CompraPlataforma() {
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => handleSelectPlataforma(plataforma)}
-                  className={`relative overflow-hidden rounded-xl border-2 ${plataforma.borderColor} transition-all duration-200 group`}
+                  className={`relative overflow-hidden rounded-xl border-2 ${plataforma.borderColor} transition-all duration-200 group touch-manipulation`}
                 >
-                  <div className={`bg-gradient-to-br ${plataforma.bgGradient} ${plataforma.hoverBg} p-4 flex flex-col items-center gap-2 transition-all`}>
-                    <span className="text-white font-black text-lg tracking-tight">
+                  <div className={`bg-gradient-to-br ${plataforma.bgGradient} ${plataforma.hoverBg} p-4 sm:p-5 flex flex-col items-center gap-2 transition-all min-h-[72px] justify-center`}>
+                    <span className="text-white font-black text-xl tracking-tight">
                       {plataforma.icon}
                     </span>
-                    <span className={`text-xs font-semibold ${plataforma.color === 'text-zinc-900' && plataforma.id === 'shein' ? 'text-white' : plataforma.id === 'shein' ? 'text-white' : ''} ${plataforma.id === 'tiktok' || plataforma.id === 'shein' ? 'text-white' : ''} ${plataforma.color} ${plataforma.id === 'tiktok' ? '!text-white' : ''} ${plataforma.id === 'shein' ? '!text-white' : ''} ${plataforma.id === 'otro' ? '!text-white' : ''}`}>
+                    <span className="text-xs font-semibold text-white">
                       {plataforma.nombre}
                     </span>
                   </div>
-                  <div className="absolute bottom-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ChevronRight className="h-5 w-5 text-white/60" />
+                  <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ChevronRight className="h-4 w-4 text-white/50" />
                   </div>
                 </motion.button>
               ))}
+            </div>
+
+            {/* Security badges */}
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-zinc-400">
+              <div className="flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5" />
+                <span>Datos protegidos</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>Pago seguro</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Timer className="h-3.5 w-3.5" />
+                <span>Confirmacion rapida</span>
+              </div>
             </div>
           </motion.div>
         </AnimatePresence>
@@ -443,14 +622,17 @@ export function CompraPlataforma() {
               <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center font-bold text-sm">
                 {selectedPlataforma.icon}
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="font-bold text-sm">{selectedPlataforma.nombre}</p>
                 <p className="text-white/70 text-xs">Paso 2: Describe el producto</p>
               </div>
+              {form.linkProducto && (
+                <BadgeCheck className="h-5 w-5 text-emerald-400" />
+              )}
             </div>
 
             <Card className="border-0 shadow-md mb-4">
-              <CardContent className="p-6 space-y-5">
+              <CardContent className="p-5 sm:p-6 space-y-5">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <LinkIcon className="h-4 w-4 text-amber-500" />
@@ -461,8 +643,10 @@ export function CompraPlataforma() {
                       value={form.linkProducto}
                       onChange={(e) => updateField('linkProducto', e.target.value)}
                       placeholder={selectedPlataforma.placeholder}
-                      className={errors.linkProducto ? 'border-red-500 pl-10' : 'pl-10'}
+                      className={errors.linkProducto ? 'border-red-500 pl-10 h-12 text-sm' : 'pl-10 h-12 text-sm'}
                       type="url"
+                      enterKeyHint="next"
+                      autoComplete="off"
                     />
                     <ExternalLink className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                   </div>
@@ -471,9 +655,16 @@ export function CompraPlataforma() {
                       <AlertCircle className="h-3 w-3" /> {errors.linkProducto}
                     </p>
                   )}
-                  <p className="text-[11px] text-zinc-400">
-                    Ejemplo: {selectedPlataforma.example}
-                  </p>
+                  {form.linkProducto && (
+                    <a
+                      href={form.linkProducto}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Abrir link en nueva pestana <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -486,7 +677,7 @@ export function CompraPlataforma() {
                     onChange={(e) => updateField('descripcionProducto', e.target.value)}
                     placeholder="Ej: iPhone 15 Pro Max 256GB Negro, Zapatillas Nike Air Max 90 talla 42..."
                     rows={3}
-                    className={errors.descripcionProducto ? 'border-red-500' : ''}
+                    className={errors.descripcionProducto ? 'border-red-500 text-sm' : 'text-sm'}
                   />
                   {errors.descripcionProducto && (
                     <p className="text-xs text-red-500 flex items-center gap-1">
@@ -503,12 +694,13 @@ export function CompraPlataforma() {
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
                     <Input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       min="0"
                       value={form.precioProducto}
                       onChange={(e) => updateField('precioProducto', e.target.value)}
                       placeholder="0.00"
-                      className="pl-7"
+                      className="pl-7 h-12 text-sm"
                     />
                   </div>
                   <p className="text-[11px] text-zinc-400">
@@ -522,13 +714,13 @@ export function CompraPlataforma() {
               <Button
                 variant="outline"
                 onClick={() => { setStep(1); setSelectedPlataforma(null); }}
-                className="flex-none"
+                className="flex-none min-h-[48px] touch-manipulation"
               >
                 Atras
               </Button>
               <Button
                 onClick={() => { if (validateStep2()) setStep(3); }}
-                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold"
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold min-h-[48px] touch-manipulation"
               >
                 Continuar
                 <ChevronRight className="h-4 w-4 ml-2" />
@@ -588,7 +780,9 @@ export function CompraPlataforma() {
                     value={form.nombreSolicitante}
                     onChange={(e) => updateField('nombreSolicitante', e.target.value)}
                     placeholder="Tu nombre"
-                    className={errors.nombreSolicitante ? 'border-red-500' : ''}
+                    className={`h-12 text-sm ${errors.nombreSolicitante ? 'border-red-500' : ''}`}
+                    autoComplete="name"
+                    enterKeyHint="next"
                   />
                   {errors.nombreSolicitante && <p className="text-xs text-red-500">{errors.nombreSolicitante}</p>}
                 </div>
@@ -601,6 +795,9 @@ export function CompraPlataforma() {
                       value={form.emailSolicitante}
                       onChange={(e) => updateField('emailSolicitante', e.target.value)}
                       placeholder="email@ejemplo.com"
+                      className="h-12 text-sm"
+                      autoComplete="email"
+                      enterKeyHint="next"
                     />
                   </div>
                   <div className="space-y-2">
@@ -610,7 +807,10 @@ export function CompraPlataforma() {
                       value={form.telefonoSolicitante}
                       onChange={(e) => updateField('telefonoSolicitante', e.target.value)}
                       placeholder="+53 0000-0000"
-                      className={errors.telefonoSolicitante ? 'border-red-500' : ''}
+                      className={`h-12 text-sm ${errors.telefonoSolicitante ? 'border-red-500' : ''}`}
+                      autoComplete="tel"
+                      inputMode="tel"
+                      enterKeyHint="next"
                     />
                     {errors.telefonoSolicitante && <p className="text-xs text-red-500">{errors.telefonoSolicitante}</p>}
                   </div>
@@ -637,7 +837,9 @@ export function CompraPlataforma() {
                       value={form.nombreDestinatario}
                       onChange={(e) => updateField('nombreDestinatario', e.target.value)}
                       placeholder="Nombre de quien recibe"
-                      className={errors.nombreDestinatario ? 'border-red-500' : ''}
+                      className={`h-12 text-sm ${errors.nombreDestinatario ? 'border-red-500' : ''}`}
+                      autoComplete="name"
+                      enterKeyHint="next"
                     />
                     {errors.nombreDestinatario && <p className="text-xs text-red-500">{errors.nombreDestinatario}</p>}
                   </div>
@@ -648,7 +850,10 @@ export function CompraPlataforma() {
                       value={form.telefonoDestinatario}
                       onChange={(e) => updateField('telefonoDestinatario', e.target.value)}
                       placeholder="+53 0000-0000"
-                      className={errors.telefonoDestinatario ? 'border-red-500' : ''}
+                      className={`h-12 text-sm ${errors.telefonoDestinatario ? 'border-red-500' : ''}`}
+                      autoComplete="tel"
+                      inputMode="tel"
+                      enterKeyHint="next"
                     />
                     {errors.telefonoDestinatario && <p className="text-xs text-red-500">{errors.telefonoDestinatario}</p>}
                   </div>
@@ -660,6 +865,8 @@ export function CompraPlataforma() {
                     value={form.carnetDestinatario}
                     onChange={(e) => updateField('carnetDestinatario', e.target.value)}
                     placeholder="Numero de carnet (opcional)"
+                    className="h-12 text-sm"
+                    enterKeyHint="next"
                   />
                 </div>
                 <div className="space-y-2">
@@ -669,7 +876,9 @@ export function CompraPlataforma() {
                     value={form.direccionDestinatario}
                     onChange={(e) => updateField('direccionDestinatario', e.target.value)}
                     placeholder="Calle, municipio, provincia"
-                    className={errors.direccionDestinatario ? 'border-red-500' : ''}
+                    className={`h-12 text-sm ${errors.direccionDestinatario ? 'border-red-500' : ''}`}
+                    autoComplete="street-address"
+                    enterKeyHint="next"
                   />
                   {errors.direccionDestinatario && <p className="text-xs text-red-500">{errors.direccionDestinatario}</p>}
                 </div>
@@ -681,6 +890,7 @@ export function CompraPlataforma() {
                     onChange={(e) => updateField('notas', e.target.value)}
                     placeholder="Instrucciones especiales, color, talla, etc."
                     rows={2}
+                    className="text-sm"
                   />
                 </div>
               </CardContent>
@@ -714,18 +924,30 @@ export function CompraPlataforma() {
               </CardContent>
             </Card>
 
+            {/* Security footer */}
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-4 text-xs text-zinc-400">
+              <div className="flex items-center gap-1">
+                <Lock className="h-3.5 w-3.5" />
+                <span>Tus datos estan protegidos</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>Compra 100% segura</span>
+              </div>
+            </div>
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => setStep(2)}
-                className="flex-none"
+                className="flex-none min-h-[48px] touch-manipulation"
               >
                 Atras
               </Button>
               <Button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-base py-6 shadow-lg shadow-amber-500/20"
+                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-base min-h-[52px] shadow-lg shadow-amber-500/20 touch-manipulation"
               >
                 {submitting ? (
                   <>

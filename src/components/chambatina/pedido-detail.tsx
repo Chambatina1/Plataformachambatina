@@ -162,13 +162,13 @@ export function PedidoDetail() {
                 {estadoInfo.label}
               </Badge>
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {ESTADOS.filter(e => e.value !== pedido.estado && e.value !== 'cancelado').map(e => (
                 <Button
                   key={e.value}
                   variant="outline"
                   size="sm"
-                  className={`text-xs h-7 ${e.color} border-0`}
+                  className={`text-xs min-h-[36px] px-3 touch-manipulation ${e.color} border-0`}
                   onClick={() => handleEstadoChange(e.value)}
                 >
                   {e.label}
@@ -178,7 +178,7 @@ export function PedidoDetail() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs h-7 bg-red-100 text-red-700 border-0"
+                  className="text-xs min-h-[36px] px-3 bg-red-100 text-red-700 border-0 touch-manipulation"
                   onClick={() => handleEstadoChange('cancelado')}
                 >
                   Cancelado
