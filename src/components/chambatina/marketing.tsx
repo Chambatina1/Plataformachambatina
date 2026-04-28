@@ -112,7 +112,7 @@ export function WhatsAppFloat() {
 // =========================================
 // 2. TIKTOK SHOP FLOATING BUTTON
 // =========================================
-const TIKTOK_SHOP_URL = 'https://www.tiktok.com/@chambatina/shop'; // Replace with your real TikTok Shop URL
+const TIKTOK_SHOP_URL = 'https://www.tiktok.com/t/ZP9NxJ1K5fjpa-T7yRP/';
 
 export function TikTokFloat() {
   const [open, setOpen] = useState(false);
