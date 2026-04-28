@@ -279,6 +279,22 @@ export default function Page() {
   return (
     <>
       <ThemeInjector />
+      {/* Critical overrides - must be AFTER ThemeInjector to win over !important */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .ch-chat-input,
+        .ch-chat-input *,
+        .ch-public .ch-chat-input,
+        .ch-public .ch-chat-input *,
+        input.ch-chat-input,
+        input.ch-chat-input::placeholder,
+        input.ch-chat-input:-webkit-input-placeholder {
+          color: #18181b !important;
+          -webkit-text-fill-color: #18181b !important;
+          background-color: #ffffff !important;
+          caret-color: #18181b !important;
+          opacity: 1 !important;
+        }
+      `}} />
       <div className={`min-h-screen flex flex-col bg-background ${mode === 'public' ? 'ch-public' : ''}`}>
         <Navbar />
         <main className="flex-1">
