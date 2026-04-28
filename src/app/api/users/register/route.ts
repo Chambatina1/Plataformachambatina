@@ -9,7 +9,7 @@ const registerSchema = z.object({
     .min(2, 'El nombre debe tener al menos 2 caracteres')
     .trim(),
   email: z.string().email('Email inválido').toLowerCase().trim(),
-  telefono: z.string().optional().or(z.literal('')),
+  telefono: z.string().min(6, 'El telefono debe tener al menos 6 caracteres').trim(),
   direccion: z.string().optional().or(z.literal('')),
   ciudad: z.string().optional().or(z.literal('')),
 });

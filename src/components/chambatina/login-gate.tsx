@@ -72,6 +72,10 @@ export function LoginGate() {
       setError('Ingresa tu nombre');
       return;
     }
+    if (!form.telefono.trim() || form.telefono.trim().length < 6) {
+      setError('Ingresa tu telefono (minimo 6 digitos)');
+      return;
+    }
 
     setError('');
     setLoading(true);
@@ -231,7 +235,7 @@ export function LoginGate() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="login-telefono" className="text-xs font-medium">
-                    Telefono <span className="text-zinc-400">(opcional)</span>
+                    Telefono *
                   </Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />

@@ -132,6 +132,7 @@ model User {
   testimonios  Testimonio[]
   EmailLog     EmailLog[]
   visits       UserVisit[]
+  presence     OnlinePresence[]
   services     ServiceListing[]
 }
 
@@ -214,4 +215,19 @@ model UserVisit {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
   @@index([createdAt])
+}
+
+model OnlinePresence {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  sessionId String
+  page      String?  @default("/")
+  userAgent String?
+  ip        String?
+  lastSeen  DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([sessionId])
+  @@index([userId])
+  @@index([lastSeen])
 }

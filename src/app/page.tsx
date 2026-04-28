@@ -191,6 +191,53 @@ export default function Page() {
   const [hasError, setHasError] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Heartbeat for online presence tracking
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const sessionId = `session-${currentUser.id}-${Date.now()}`;
+    let heartbeatInterval: NodeJS.Timeout | null = null;
+
+    function sendHeartbeat() {
+      const page = mode === 'admin' ? `/admin/${adminView}` : `/${currentView}`;
+      try {
+        fetch('/api/presence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            sessionId,
+            page,
+          }),
+        }).catch(() => {});
+      } catch {}
+    }
+
+    // Initial heartbeat
+    sendHeartbeat();
+    // Send heartbeat every 30 seconds
+    heartbeatInterval = setInterval(sendHeartbeat, 30000);
+
+    // Clean up session on unmount or tab close
+    function cleanup() {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      try {
+        navigator.sendBeacon(
+          `/api/presence?sessionId=${encodeURIComponent(sessionId)}`,
+          JSON.stringify({ _method: 'DELETE' })
+        );
+        // Fallback: also try fetch DELETE
+        fetch(`/api/presence?sessionId=${encodeURIComponent(sessionId)}`, { method: 'DELETE' }).catch(() => {});
+      } catch {}
+    }
+
+    window.addEventListener('beforeunload', cleanup);
+    return () => {
+      window.removeEventListener('beforeunload', cleanup);
+      cleanup();
+    };
+  }, [currentUser, mode, currentView, adminView]);
+
   // Handle ?comprar=ID query param to auto-open purchase form
   // MUST be called before any conditional return (React hooks rule)
   useEffect(() => {

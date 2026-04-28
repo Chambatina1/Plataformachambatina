@@ -24,6 +24,7 @@ import {
   ArrowRight,
   BarChart3,
 } from 'lucide-react';
+import { OnlineVisitorsPanel } from './online-visitors';
 
 const ESTADOS = [
   { value: 'pendiente', label: 'Pendiente', color: 'bg-amber-100 text-amber-700' },
@@ -192,6 +193,11 @@ export function AdminDashboard() {
             <ArrowRight className="h-4 w-4 text-zinc-400" />
           </CardContent>
         </Card>
+      </div>
+
+      {/* Online Visitors */}
+      <div className="mb-8">
+        <OnlineVisitorsPanel />
       </div>
 
       {/* Recent Orders */}
