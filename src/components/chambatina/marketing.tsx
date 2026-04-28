@@ -22,6 +22,9 @@ import {
   Zap,
   Award,
   Quote,
+  ExternalLink,
+  ShoppingBag,
+  Music2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -107,7 +110,91 @@ export function WhatsAppFloat() {
 }
 
 // =========================================
-// 2. SOCIAL SHARE BUTTONS
+// 2. TIKTOK SHOP FLOATING BUTTON
+// =========================================
+const TIKTOK_SHOP_URL = 'https://www.tiktok.com/@chambatina/shop'; // Replace with your real TikTok Shop URL
+
+export function TikTokFloat() {
+  const [open, setOpen] = useState(false);
+
+  const handleGoToShop = () => {
+    if (TIKTOK_SHOP_URL) {
+      window.open(TIKTOK_SHOP_URL, '_blank');
+    }
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            className="fixed bottom-24 left-4 z-[90] w-72 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden"
+          >
+            {/* TikTok-style header */}
+            <div className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 p-3 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 via-pink-500 to-rose-500 flex items-center justify-center">
+                <Music2 className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">TikTok Shop</p>
+                <p className="text-zinc-400 text-[10px]">Encuentra nuestros productos</p>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                className="ml-auto text-zinc-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-3">
+              <div className="bg-gradient-to-br from-zinc-50 to-pink-50 rounded-xl p-3 mb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <ShoppingBag className="h-4 w-4 text-pink-500" />
+                  <span className="text-xs font-semibold" style={{ color: '#18181b' }}>Showcase Chambatina</span>
+                </div>
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  Explora nuestro catalogo completo en TikTok Shop. Productos exclusivos con envio directo a tu puerta.
+                </p>
+              </div>
+
+              <button
+                onClick={handleGoToShop}
+                className="w-full h-10 rounded-xl bg-gradient-to-r from-cyan-400 via-pink-500 to-rose-500 hover:from-cyan-500 hover:via-pink-600 hover:to-rose-600 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-pink-500/25"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Ir a TikTok Shop
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating button - TikTok style with cyan/pink gradient */}
+      <motion.button
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 1.2, type: 'spring' }}
+        onClick={() => setOpen(!open)}
+        className="fixed bottom-6 left-4 z-[90] w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-400 via-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 hover:shadow-pink-500/50"
+      >
+        {open ? (
+          <X className="h-6 w-6" />
+        ) : (
+          <Music2 className="h-6 w-6" />
+        )}
+      </motion.button>
+    </>
+  );
+}
+
+// =========================================
+// 3. SOCIAL SHARE BUTTONS
 // =========================================
 export function ShareButtons({ title, text, url }: { title: string; text: string; url?: string }) {
   const shareUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
