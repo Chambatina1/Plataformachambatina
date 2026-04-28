@@ -169,6 +169,46 @@ interface FormData {
   notas: string;
 }
 
+interface DestinatarioFrecuente {
+  nombre: string;
+  telefono: string;
+  carnet: string;
+  direccion: string;
+  veces: number;
+  ultimoUso: string;
+}
+
+const DEST_KEY = 'chambatina-destinatarios';
+
+function loadDestinatarios(): DestinatarioFrecuente[] {
+  try {
+    const raw = localStorage.getItem(DEST_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveDestinatarios(list: DestinatarioFrecuente[]) {
+  try { localStorage.setItem(DEST_KEY, JSON.stringify(list)); } catch {}
+}
+
+function addDestinatario(d: { nombre: string; telefono: string; carnet: string; direccion: string }) {
+  const list = loadDestinatarios();
+  const idx = list.findIndex(x => x.nombre.toLowerCase() === d.nombre.toLowerCase());
+  if (idx >= 0) {
+    list[idx].telefono = d.telefono || list[idx].telefono;
+    list[idx].carnet = d.carnet || list[idx].carnet;
+    list[idx].direccion = d.direccion || list[idx].direccion;
+    list[idx].veces += 1;
+    list[idx].ultimoUso = new Date().toISOString();
+  } else {
+    list.unshift({ ...d, veces: 1, ultimoUso: new Date().toISOString() });
+  }
+  // Keep max 10
+  const sorted = list.sort((a, b) => b.veces - a.veces).slice(0, 10);
+  saveDestinatarios(sorted);
+  return sorted;
+}
+
 export function CompraPlataforma() {
   const { setCurrentView, currentUser } = useAppStore();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -181,6 +221,8 @@ export function CompraPlataforma() {
   const [pasting, setPasting] = useState(false);
   const [detectedPlatform, setDetectedPlatform] = useState<PlataformaConfig | null>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
+  const [destinatarios, setDestinatarios] = useState<DestinatarioFrecuente[]>([]);
+  const [showDestDropdown, setShowDestDropdown] = useState(false);
 
   const [form, setForm] = useState<FormData>({
     plataforma: '',
@@ -207,6 +249,40 @@ export function CompraPlataforma() {
       }));
     }
   }, [currentUser]);
+
+  // Load frequent recipients when step 3 starts
+  useEffect(() => {
+    if (step === 3) {
+      setDestinatarios(loadDestinatarios());
+    }
+  }, [step]);
+
+  // Auto-fill from frequent recipient
+  const handleSelectDestinatario = (dest: DestinatarioFrecuente) => {
+    setForm((prev) => ({
+      ...prev,
+      nombreDestinatario: dest.nombre,
+      telefonoDestinatario: dest.telefono,
+      carnetDestinatario: dest.carnet || '',
+      direccionDestinatario: dest.direccion,
+    }));
+    setShowDestDropdown(false);
+    // Clear errors
+    setErrors((prev) => ({
+      ...prev,
+      nombreDestinatario: undefined,
+      telefonoDestinatario: undefined,
+      direccionDestinatario: undefined,
+    }));
+    toast.success(`Datos de ${dest.nombre} cargados`);
+  };
+
+  // Filter destinatarios as user types name
+  const filteredDests = showDestDropdown
+    ? destinatarios.filter(d =>
+        d.nombre.toLowerCase().includes((form.nombreDestinatario || '').toLowerCase())
+      )
+    : [];
 
   const handleSelectPlataforma = (plataforma: PlataformaConfig) => {
     setSelectedPlataforma(plataforma);
@@ -312,6 +388,13 @@ export function CompraPlataforma() {
       });
       const json = await res.json();
       if (json.ok) {
+        // Save this recipient as frequent
+        addDestinatario({
+          nombre: form.nombreDestinatario,
+          telefono: form.telefonoDestinatario,
+          carnet: form.carnetDestinatario,
+          direccion: form.direccionDestinatario,
+        });
         setPedidoId(json.data.id);
         setSubmitted(true);
         toast.success('Solicitud enviada correctamente');
@@ -821,14 +904,66 @@ export function CompraPlataforma() {
             {/* Destination Info */}
             <Card className="border-0 shadow-md mb-4">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                    <MapPin className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  Datos del Destinatario
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                      <MapPin className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    Datos del Destinatario
+                  </CardTitle>
+                  {destinatarios.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDestDropdown(!showDestDropdown)}
+                      className="text-xs font-medium text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 touch-manipulation"
+                    >
+                      <User className="h-3.5 w-3.5" />
+                      Destinatarios frecuentes
+                    </button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="pt-0 space-y-4">
+                {/* Frequent Recipients Quick Select */}
+                {showDestDropdown && destinatarios.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2"
+                  >
+                    <p className="text-xs font-semibold text-amber-800 mb-2">Selecciona un destinatario anterior:</p>
+                    <div className="space-y-1.5">
+                      {(filteredDests.length > 0 ? filteredDests : destinatarios).map((dest, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => handleSelectDestinatario(dest)}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white hover:bg-amber-50 border border-amber-100 transition-colors text-left touch-manipulation"
+                        >
+                          <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                            <User className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-zinc-900 truncate">{dest.nombre}</p>
+                              <Badge className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0 shrink-0">{dest.veces}x</Badge>
+                            </div>
+                            <p className="text-[11px] text-zinc-500 truncate">{dest.direccion}</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-zinc-300 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowDestDropdown(false)}
+                      className="w-full text-xs text-amber-600 font-medium pt-1 touch-manipulation"
+                    >
+                      Cerrar lista
+                    </button>
+                  </motion.div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="nombreDest" className="text-xs font-medium">Nombre del destinatario *</Label>
@@ -836,6 +971,7 @@ export function CompraPlataforma() {
                       id="nombreDest"
                       value={form.nombreDestinatario}
                       onChange={(e) => updateField('nombreDestinatario', e.target.value)}
+                      onFocus={() => { if (destinatarios.length > 0) setShowDestDropdown(true); }}
                       placeholder="Nombre de quien recibe"
                       className={`h-12 text-sm ${errors.nombreDestinatario ? 'border-red-500' : ''}`}
                       autoComplete="name"
@@ -859,12 +995,12 @@ export function CompraPlataforma() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="carnetDest" className="text-xs font-medium">Carnet de identidad</Label>
+                  <Label htmlFor="carnetDest" className="text-xs font-medium text-zinc-500">Carnet de identidad (opcional)</Label>
                   <Input
                     id="carnetDest"
                     value={form.carnetDestinatario}
                     onChange={(e) => updateField('carnetDestinatario', e.target.value)}
-                    placeholder="Numero de carnet (opcional)"
+                    placeholder="Solo si lo tienes a mano"
                     className="h-12 text-sm"
                     enterKeyHint="next"
                   />

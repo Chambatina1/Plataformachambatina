@@ -54,23 +54,44 @@ export async function POST(request: NextRequest) {
     }
 
     // Crear el pedido con info de plataforma
-    const pedido = await db.pedido.create({
-      data: {
-        nombreComprador: data.nombreSolicitante,
-        emailComprador: data.emailSolicitante || '',
-        telefonoComprador: data.telefonoSolicitante,
-        nombreDestinatario: data.nombreDestinatario,
-        telefonoDestinatario: data.telefonoDestinatario,
-        carnetDestinatario: data.carnetDestinatario || '',
-        direccionDestinatario: data.direccionDestinatario,
-        producto: `[${plataforma.toUpperCase()}] ${data.descripcionProducto}`,
-        notas: data.notas || null,
-        plataforma: plataforma,
-        linkProducto: data.linkProducto || null,
-        estado: 'pendiente',
-        updatedAt: new Date(),
-      },
-    });
+    // Try with plataforma/linkProducto fields first, fallback if they don't exist in DB
+    let pedido;
+    try {
+      pedido = await db.pedido.create({
+        data: {
+          nombreComprador: data.nombreSolicitante,
+          emailComprador: data.emailSolicitante || '',
+          telefonoComprador: data.telefonoSolicitante,
+          nombreDestinatario: data.nombreDestinatario,
+          telefonoDestinatario: data.telefonoDestinatario,
+          carnetDestinatario: data.carnetDestinatario || '',
+          direccionDestinatario: data.direccionDestinatario,
+          producto: `[${plataforma.toUpperCase()}] ${data.descripcionProducto}`,
+          notas: data.notas || null,
+          plataforma: plataforma,
+          linkProducto: data.linkProducto || null,
+          estado: 'pendiente',
+          updatedAt: new Date(),
+        },
+      });
+    } catch {
+      // Fallback: columns plataforma/linkProducto may not exist yet in production DB
+      pedido = await db.pedido.create({
+        data: {
+          nombreComprador: data.nombreSolicitante,
+          emailComprador: data.emailSolicitante || '',
+          telefonoComprador: data.telefonoSolicitante,
+          nombreDestinatario: data.nombreDestinatario,
+          telefonoDestinatario: data.telefonoDestinatario,
+          carnetDestinatario: data.carnetDestinatario || '',
+          direccionDestinatario: data.direccionDestinatario,
+          producto: `[${plataforma.toUpperCase()}] ${data.descripcionProducto} | Link: ${data.linkProducto}`,
+          notas: data.notas || null,
+          estado: 'pendiente',
+          updatedAt: new Date(),
+        },
+      });
+    }
 
     return NextResponse.json(
       { ok: true, data: pedido },
