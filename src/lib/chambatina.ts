@@ -155,22 +155,29 @@ export function parsearTrackingTSV(texto: string): TrackingParsed[] {
   const lineas = texto.trim().split('\n').filter(line => line.trim().length > 0);
   const resultados: TrackingParsed[] = [];
 
-  // Estado keywords - mapped to 13 logistics stages
+  // Estado keywords - mapped to 13 logistics stages (synced with solvedcargo.ts)
   const ESTADO_KEYWORDS = [
     { regex: /ENTREGADO/i, estado: 'ENTREGADO' },
-    { regex: /EN DISTRIBUCION|EN DISTRIBUCIÓN|REPARTO/i, estado: 'EN DISTRIBUCION' },
+    { regex: /EN DISTRIBUCION|EN DISTRIBUCIÓN|EN DISTRIBUCION [A-Z]|REPARTO/i, estado: 'EN DISTRIBUCION' },
+    { regex: /EN ALMACEN (PINAR|ARTEMISA|MAYABEQUE|MATANZAS|VILLA|CIENFUEGOS|SANCTI|CIEGO|CAMAGÜEY|CAMAGUEY|LAS TUNAS|HOLGUIN|GRANMA|SANTIAGO|GUANTANAMO)/i, estado: 'ALMACEN PROVINCIAL' },
     { regex: /ALMACEN PROVINCIAL/i, estado: 'ALMACEN PROVINCIAL' },
+    { regex: /EN TRANSITO (PINAR|ARTEMISA|MAYABEQUE|MATANZAS|VILLA|CIENFUEGOS|SANCTI|CIEGO|CAMAGÜEY|CAMAGUEY|LAS TUNAS|HOLGUIN|GRANMA|SANTIAGO|GUANTANAMO)/i, estado: 'TRASLADO PROVINCIA' },
     { regex: /TRASLADO PROVINCIA|TRASLADO A PROVINCIA/i, estado: 'TRASLADO PROVINCIA' },
+    { regex: /EN ALMACEN/i, estado: 'ALMACEN CENTRAL' },
     { regex: /ALMACEN CENTRAL/i, estado: 'ALMACEN CENTRAL' },
-    { regex: /CLASIFICACION|CLASIFICACIÓN/i, estado: 'CLASIFICACION' },
+    { regex: /CLASIFICACION|CLASIFICACIÓN|CLASIFICADO/i, estado: 'CLASIFICACION' },
+    { regex: /EN ESPERA DE TRANSITO|EN ESPERA DE TRÁNSITO/i, estado: 'CLASIFICACION' },
+    { regex: /DESPACHADO/i, estado: 'EN ADUANA' },
     { regex: /EN ADUANA|ADUANA/i, estado: 'EN ADUANA' },
-    { regex: /DESGRUPE|PENDIENTE DESGRUPE/i, estado: 'DESGRUPE' },
-    { regex: /EN NAVIERA|NAVIERA|PUERTO|ARRIBO/i, estado: 'EN NAVIERA' },
+    { regex: /DESAGRUPADO|PENDIENTE DESGRUPE|DESGRUPE|DESTUFFING/i, estado: 'DESGRUPE' },
+    { regex: /ARRIBO/i, estado: 'EN NAVIERA' },
+    { regex: /EN NAVIERA|NAVIERA|PUERTO/i, estado: 'EN NAVIERA' },
     { regex: /EN TRANSITO|EN TRÁNSITO|RUMBO|NAVEGACION|NAVEGACIÓN/i, estado: 'EN TRANSITO' },
+    { regex: /^EMBARCADO$/i, estado: 'EN TRANSITO' },
     { regex: /CONTENEDOR|ESTIBA/i, estado: 'EN CONTENEDOR' },
     { regex: /TRANSPORTE A NAVIERA|TRANSPORTE/i, estado: 'TRANSPORTE A NAVIERA' },
     { regex: /EN AGENCIA|RECIBIDO|AGENCIA/i, estado: 'EN AGENCIA' },
-    { regex: /EMBARCADO/i, estado: 'EN AGENCIA' },
+    { regex: /FALTANTE|PERDIDA/i, estado: 'EN AGENCIA' },
   ];
 
   // Helper: check if a column looks like a person name (2+ words, mostly letters)

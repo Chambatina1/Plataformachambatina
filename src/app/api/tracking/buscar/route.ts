@@ -4,29 +4,36 @@ import { normalizarCPK, estadoPorTiempo, ETAPAS } from '@/lib/chambatina';
 import { searchSolvedCargo, mapEstado } from '@/lib/solvedcargo';
 
 // Map real estado string to matching ETAPA for timeline display (13 stages)
+// Synced with solvedcargo.ts mapEstado - uses same SolvedCargo logistics logic
 function matchEtapa(estado: string) {
   const upper = estado.toUpperCase().trim();
+  const e = ETAPAS.find;
+
+  // Exact 13-stage matches
+  if (upper === 'ENTREGADO' || upper === 'ENTREGADO PP' || upper === 'ENTREGADO V') return e(et => et.estado === 'ENTREGADO');
+  if (upper.includes('DISTRIBUCION') || upper.includes('REPARTO')) return e(et => et.estado === 'EN DISTRIBUCION');
+  if (upper.includes('ALMACEN') && hasProvinciaMatch(upper)) return e(et => et.estado === 'ALMACEN PROVINCIAL');
+  if ((upper.startsWith('EN TRANSITO') || upper.startsWith('EN TRÁNSITO')) && hasProvinciaMatch(upper)) return e(et => et.estado === 'TRASLADO PROVINCIA');
+  if (upper.includes('ESPERA DE TRANSITO') || upper.includes('CLASIFICADO')) return e(et => et.estado === 'CLASIFICACION');
+  if (upper.includes('ALMACEN')) return e(et => et.estado === 'ALMACEN CENTRAL');
+  if (upper === 'CLASIFICACION' || upper.includes('CLASIFICACIÓN')) return e(et => et.estado === 'CLASIFICACION');
+  if (upper === 'DESPACHADO' || upper.includes('ADUANA')) return e(et => et.estado === 'EN ADUANA');
+  if (upper === 'DESAGRUPADO' || upper.includes('PENDIENTE DESAGRUPE') || upper.includes('DESGRUPE')) return e(et => et.estado === 'DESGRUPE');
+  if (upper === 'ARRIBO' || upper.includes('NAVIERA') || upper.includes('PUERTO')) return e(et => et.estado === 'EN NAVIERA');
+  if (upper === 'EN TRANSITO' || upper === 'EN TRÁNSITO' || upper === 'EMBARCADO' || upper.includes('RUMBO') || upper.includes('NAVEGACION')) return e(et => et.estado === 'EN TRANSITO');
+  if (upper.includes('CONTENEDOR') || upper.includes('ESTIBA')) return e(et => et.estado === 'EN CONTENEDOR');
+  if (upper.includes('TRANSPORTE')) return e(et => et.estado === 'TRANSPORTE A NAVIERA');
+  if (upper === 'EN AGENCIA' || upper === 'FALTANTE' || upper === 'PERDIDA' || upper.includes('RECIBIDO')) return e(et => et.estado === 'EN AGENCIA');
+
+  // Fallback: substring match
   for (const etapa of ETAPAS) {
-    if (upper === etapa.estado || upper.includes(etapa.estado)) {
-      return etapa;
-    }
+    if (upper.includes(etapa.estado)) return etapa;
   }
-  // Fallback mappings for common variations
-  if (upper.includes('ENTREGADO')) return ETAPAS.find(e => e.estado === 'ENTREGADO');
-  if (upper.includes('ALMACEN') && upper.includes('PROVINCIAL')) return ETAPAS.find(e => e.estado === 'ALMACEN PROVINCIAL');
-  if (upper.includes('TRASLADO') || (upper.includes('PROVINCIA') && !upper.includes('ALMACEN'))) return ETAPAS.find(e => e.estado === 'TRASLADO PROVINCIA');
-  if (upper.includes('ALMACEN') && upper.includes('CENTRAL')) return ETAPAS.find(e => e.estado === 'ALMACEN CENTRAL');
-  if (upper.includes('CLASIFICACION') || upper.includes('CLASIFICACIÓN')) return ETAPAS.find(e => e.estado === 'CLASIFICACION');
-  if (upper.includes('DISTRIBUCION') || upper.includes('DISTRIBUCIÓN') || upper.includes('REPARTO')) return ETAPAS.find(e => e.estado === 'EN DISTRIBUCION');
-  if (upper.includes('ADUANA')) return ETAPAS.find(e => e.estado === 'EN ADUANA');
-  if (upper.includes('DESGRUPE') || upper.includes('DESTUFFING')) return ETAPAS.find(e => e.estado === 'DESGRUPE');
-  if (upper.includes('NAVIERA') || upper.includes('PUERTO') || upper.includes('ARRIBO')) return ETAPAS.find(e => e.estado === 'EN NAVIERA');
-  if (upper.includes('CONTENEDOR') || upper.includes('ESTIBA') || upper.includes('CARGADO')) return ETAPAS.find(e => e.estado === 'EN CONTENEDOR');
-  if (upper.includes('TRANSITO') || upper.includes('TRÁNSITO') || upper.includes('RUMBO')) return ETAPAS.find(e => e.estado === 'EN TRANSITO');
-  if (upper.includes('TRANSPORTE')) return ETAPAS.find(e => e.estado === 'TRANSPORTE A NAVIERA');
-  if (upper.includes('AGENCIA') || upper.includes('RECIBIDO') || upper.includes('PENDIENTE')) return ETAPAS.find(e => e.estado === 'EN AGENCIA');
-  if (upper.includes('EMBARCADO')) return ETAPAS.find(e => e.estado === 'EN AGENCIA');
   return null;
+}
+
+function hasProvinciaMatch(text: string): boolean {
+  return /PINAR|ARTEMISA|MAYABEQUE|MATANZAS|VILLA CLARA|CIENFUEGOS|SANCTI SPIRITUS|CIEGO|CAMAGÜEY|CAMAGUEY|LAS TUNAS|HOLGUIN|GRANMA|SANTIAGO|GUANTANAMO/.test(text);
 }
 
 // GET /api/tracking/buscar?cpk=XXX or ?carnet=XXX or ?q=XXX (smart search)

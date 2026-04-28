@@ -162,25 +162,137 @@ async function getListRecords(session: SolvedCargoSession, option: string, where
 
 /**
  * Map SolvedCargo estado string to our 13-stage system
+ *
+ * Based on real SolvedCargo estados (extracted from 3611 records):
+ *   EMBARCADO, EN ESPERA DE TRANSITO, EN TRANSITO [PROVINCIA], ARRIBO,
+ *   EN ALMACEN [PROVINCIA], EN DISTRIBUCION [PROVINCIA], CLASIFICADO,
+ *   DESAGRUPADO, PENDIENTE DESAGRUPE, DESPACHADO, ENTREGADO, ENTREGADO PP,
+ *   ENTREGADO V, FALTANTE, PERDIDA, EN AGENCIA, EN TRANSITO (sin provincia)
+ *
+ * Logistics flow (real):
+ *   EMBARCADO -> buque zarpo (EN TRANSITO marítimo)
+ *   ARRIBO -> buque llegó al puerto de Cuba (EN NAVIERA)
+ *   PENDIENTE DESAGRUPE / DESAGRUPADO -> vaciando contenedor (DESGRUPE)
+ *   DESPACHADO -> proceso aduanero (EN ADUANA)
+ *   CLASIFICADO -> clasificando por provincia (CLASIFICACION)
+ *   EN ALMACEN (sin provincia) -> almacén central Habana (ALMACEN CENTRAL)
+ *   EN ESPERA DE TRANSITO -> pasó aduana, espera transporte provincia (CLASIFICACION)
+ *   EN TRANSITO [PROVINCIA] -> camión hacia provincia (TRASLADO PROVINCIA)
+ *   EN ALMACEN [PROVINCIA] -> llegó a provincia (ALMACEN PROVINCIAL)
+ *   EN DISTRIBUCION -> repartiendo al destinatario (EN DISTRIBUCION)
+ *   ENTREGADO -> entregado al cliente (ENTREGADO)
  */
 export function mapEstado(estadoRaw: string): string {
   const upper = (estadoRaw || '').toUpperCase().trim();
 
-  if (upper.includes('ENTREGADO')) return 'ENTREGADO';
-  if (upper.includes('DISTRIBUCION') || upper.includes('DISTRIBUCIÓN') || upper.includes('REPARTO')) return 'EN DISTRIBUCION';
-  if (upper.includes('ALMACEN') && upper.includes('PROVINCIAL')) return 'ALMACEN PROVINCIAL';
-  if (upper.includes('TRASLADO') || upper.includes('PROVINCIA')) return 'TRASLADO PROVINCIA';
-  if (upper.includes('ALMACEN') && upper.includes('CENTRAL')) return 'ALMACEN CENTRAL';
-  if (upper.includes('CLASIFICACION') || upper.includes('CLASIFICACIÓN')) return 'CLASIFICACION';
-  if (upper.includes('ADUANA')) return 'EN ADUANA';
-  if (upper.includes('DESGRUPE') || upper.includes('DESTUFFING')) return 'DESGRUPE';
-  if (upper.includes('NAVIERA') || upper.includes('PUERTO') || upper.includes('ARRIBO')) return 'EN NAVIERA';
-  if (upper.includes('TRANSITO') || upper.includes('TRÁNSITO') || upper.includes('RUMBO') || upper.includes('MAR')) return 'EN TRANSITO';
-  if (upper.includes('CONTENEDOR') || upper.includes('ESTIBA') || upper.includes('CARGADO')) return 'EN CONTENEDOR';
-  if (upper.includes('TRANSPORTE')) return 'TRANSPORTE A NAVIERA';
-  if (upper.includes('AGENCIA') || upper.includes('RECIBIDO') || upper.includes('PENDIENTE')) return 'EN AGENCIA';
+  // ─── ENTREGADO (todas las variantes) ───────────────────────────
+  if (upper === 'ENTREGADO' || upper === 'ENTREGADO PP' || upper === 'ENTREGADO V') {
+    return 'ENTREGADO';
+  }
+
+  // ─── EN DISTRIBUCION (con o sin provincia) ────────────────────
+  if (upper.includes('DISTRIBUCION') || upper.includes('DISTRIBUCIÓN') || upper.includes('REPARTO')) {
+    return 'EN DISTRIBUCION';
+  }
+
+  // ─── EN ALMACEN PROVINCIAL (con nombre de provincia) ──────────
+  // Ej: "EN ALMACEN CAMAGUEY", "EN ALMACEN HOLGUIN", etc.
+  if (upper.includes('ALMACEN') && hasProvincia(upper)) {
+    return 'ALMACEN PROVINCIAL';
+  }
+
+  // ─── EN TRANSITO A PROVINCIA (en camión hacia provincia) ─────
+  // Ej: "EN TRANSITO CAMAGUEY", "EN TRANSITO HOLGUIN"
+  // MUY IMPORTANTE: "EN TRANSITO" sin provincia = tránsito marítimo
+  // "EN TRANSITO CAMAGUEY" = ya en tierra, camión a provincia
+  if (upper.startsWith('EN TRANSITO') && hasProvincia(upper)) {
+    return 'TRASLADO PROVINCIA';
+  }
+
+  // ─── EN ESPERA DE TRANSITO ────────────────────────────────────
+  // Pasó aduana, está esperando el transporte hacia provincia
+  // Este es un estado POST-aduana, PRE-traslado
+  if (upper.includes('ESPERA DE TRANSITO') || upper.includes('ESPERA DE TRÁNSITO')) {
+    return 'CLASIFICACION';
+  }
+
+  // ─── ALMACEN CENTRAL (sin nombre de provincia) ───────────────
+  if (upper.includes('ALMACEN')) {
+    return 'ALMACEN CENTRAL';
+  }
+
+  // ─── CLASIFICACION / CLASIFICADO ─────────────────────────────
+  if (upper === 'CLASIFICADO' || upper.includes('CLASIFICACION') || upper.includes('CLASIFICACIÓN')) {
+    return 'CLASIFICACION';
+  }
+
+  // ─── DESPACHADO = en proceso aduanero ─────────────────────────
+  if (upper === 'DESPACHADO') {
+    return 'EN ADUANA';
+  }
+
+  // ─── ADUANA ──────────────────────────────────────────────────
+  if (upper.includes('ADUANA')) {
+    return 'EN ADUANA';
+  }
+
+  // ─── DESGRUPE / DESAGRUPADO / PENDIENTE DESAGRUPE ────────────
+  if (upper === 'DESAGRUPADO' || upper === 'PENDIENTE DESAGRUPE' || upper.includes('DESGRUPE') || upper.includes('DESTUFFING')) {
+    return 'DESGRUPE';
+  }
+
+  // ─── ARRIBO = buque llegó al puerto ──────────────────────────
+  if (upper === 'ARRIBO' || upper.includes('ARRIBO')) {
+    return 'EN NAVIERA';
+  }
+
+  // ─── EN TRANSITO (sin provincia) = tránsito marítimo ────────
+  if (upper === 'EN TRANSITO' || upper === 'EN TRÁNSITO' || upper.includes('RUMBO') || upper.includes('NAVEGACION') || upper.includes('NAVEGACIÓN') || upper.includes('MAR')) {
+    return 'EN TRANSITO';
+  }
+
+  // ─── EMBARCADO = contenedor zarpó, en tránsito marítimo ────
+  if (upper === 'EMBARCADO') {
+    return 'EN TRANSITO';
+  }
+
+  // ─── NAVIERA / PUERTO ───────────────────────────────────────
+  if (upper.includes('NAVIERA') || upper.includes('PUERTO')) {
+    return 'EN NAVIERA';
+  }
+
+  // ─── CONTENEDOR / ESTIBA / CARGADO ───────────────────────────
+  if (upper.includes('CONTENEDOR') || upper.includes('ESTIBA') || upper.includes('CARGADO')) {
+    return 'EN CONTENEDOR';
+  }
+
+  // ─── TRANSPORTE A NAVIERA ────────────────────────────────────
+  if (upper.includes('TRANSPORTE')) {
+    return 'TRANSPORTE A NAVIERA';
+  }
+
+  // ─── EN AGENCIA / RECIBIDO / PENDIENTE ───────────────────────
+  if (upper.includes('AGENCIA') || upper.includes('RECIBIDO') || upper === 'PENDIENTE') {
+    return 'EN AGENCIA';
+  }
+
+  // ─── FALTANTE / PERDIDA → se mantiene en agencia para revisión
+  if (upper === 'FALTANTE' || upper === 'PERDIDA') {
+    return 'EN AGENCIA';
+  }
 
   return upper || 'EN AGENCIA';
+}
+
+// Check if the estado string contains a Cuban province name
+function hasProvincia(text: string): boolean {
+  const provincias = [
+    'PINAR DEL RIO', 'ARTEMISA', 'LA HABANA', 'MAYABEQUE', 'MATANZAS',
+    'VILLA CLARA', 'CIENFUEGOS', 'SANCTI SPIRITUS', 'CIEGO DE AVILA',
+    'CAMAGUEY', 'LAS TUNAS', 'HOLGUIN', 'GRANMA', 'SANTIAGO DE CUBA',
+    'GUANTANAMO', 'ISLA DE LA JUVENTUD',
+  ];
+  return provincias.some(p => text.includes(p));
 }
 
 /**
