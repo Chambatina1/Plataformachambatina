@@ -23,6 +23,8 @@ import { AparienciaPanel } from '@/components/chambatina/apariencia-panel';
 import { UsersPanel } from '@/components/chambatina/users-panel';
 import { Servicios } from '@/components/chambatina/servicios';
 import { WhatsAppFloat, TikTokFloat } from '@/components/chambatina/marketing';
+import { WelcomePopup } from '@/components/chambatina/welcome-popup';
+import { EmailLeadsPanel } from '@/components/chambatina/email-leads-panel';
 import { Button } from '@/components/ui/button';
 
 // Error-safe component wrapper
@@ -244,6 +246,7 @@ export default function Page() {
         case 'users': return <UsersPanel />;
         case 'emails': return <ConfigPanel />;
         case 'servicios-admin': return <Servicios />;
+        case 'leads': return <EmailLeadsPanel />;
         default: return <AdminDashboard />;
       }
     }
@@ -324,6 +327,7 @@ export default function Page() {
         <RegisterDialog />
         {mode === 'public' && <WhatsAppFloat />}
         {mode === 'public' && <TikTokFloat />}
+        {mode === 'public' && <WelcomePopup />}
       </div>
       <script
         dangerouslySetInnerHTML={{

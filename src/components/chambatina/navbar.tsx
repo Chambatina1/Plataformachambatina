@@ -24,6 +24,7 @@ import {
   Store,
   Users,
   UserPlus,
+  Mail,
 } from 'lucide-react';
 
 // ---- PUBLIC NAV ----
@@ -249,6 +250,7 @@ const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3 }[
   { view: 'ai-training', label: 'IA Chat', icon: Brain },
   { view: 'apariencia', label: 'Apariencia', icon: Palette },
   { view: 'users', label: 'Usuarios', icon: Users },
+  { view: 'leads', label: 'Leads', icon: Mail },
   { view: 'config', label: 'Config', icon: Settings },
 ];
 

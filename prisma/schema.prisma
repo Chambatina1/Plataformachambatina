@@ -184,6 +184,19 @@ model ServiceListing {
   @@index([createdAt])
 }
 
+model EmailLead {
+  id        Int      @id @default(autoincrement())
+  email     String
+  nombre    String?
+  source    String?  @default("popup")
+ cupon     String?  @default("CHAMBA10")
+ usado     Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([email])
+  @@index([createdAt])
+}
+
 model UserVisit {
   id        Int      @id @default(autoincrement())
   userId    Int
