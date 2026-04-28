@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAppStore } from './store';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Send, Loader2, MessageCircle, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,14 +12,6 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
-
-const QUICK_QUESTIONS = [
-  '¿Cuánto cuesta enviar 10 lb?',
-  '¿Cuánto cuesta enviar 25 lb a domicilio?',
-  'Precios de bicicletas',
-  '¿Dónde están ubicados?',
-  'Precios de cajas',
-];
 
 function generateSessionId(): string {
   return 'session-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
@@ -31,17 +22,15 @@ export function ChatIA() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(generateSessionId);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Scroll to bottom whenever messages change or loading starts/stops
   useEffect(() => {
-    // Small delay to let React render the new message first
-    const timer = setTimeout(scrollToBottom, 100);
+    const timer = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ block: 'end' });
+    }, 50);
     return () => clearTimeout(timer);
   }, [messages, loading]);
 
@@ -68,15 +57,10 @@ export function ChatIA() {
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Lo siento, tuve un problema de conexión. Por favor intenta de nuevo.',
+        content: 'Lo siento, tuve un problema de conexion. Por favor intenta de nuevo.',
       }]);
     } finally {
       setLoading(false);
-      // Ensure input is visible and focused after response
-      setTimeout(() => {
-        scrollToBottom();
-        inputRef.current?.focus();
-      }, 100);
     }
   };
 
@@ -89,24 +73,20 @@ export function ChatIA() {
 
   const clearChat = () => {
     setMessages([]);
+    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
-  // Simple markdown-like rendering
   const renderContent = (content: string) => {
     return content.split('\n').map((line, i) => {
-      // Bold
       let processed = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      // Italic
       processed = processed.replace(/\*(.*?)\*/g, '<em>$1</em>');
-      // Headers
       if (processed.startsWith('# ')) {
-        return <h3 key={i} className="font-bold text-base mt-2 mb-1">{processed.replace('# ', '')}</h3>;
+        return <h3 key={i} className="font-bold text-base mt-2 mb-1 text-zinc-900">{processed.replace('# ', '')}</h3>;
       }
-
       return (
         <p
           key={i}
-          className={`${line.trim() === '' ? 'h-3' : ''}`}
+          className={`${line.trim() === '' ? 'h-3' : 'text-zinc-800'}`}
           dangerouslySetInnerHTML={{ __html: processed || '&nbsp;' }}
         />
       );
@@ -114,118 +94,95 @@ export function ChatIA() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col"
-      style={{ height: 'calc(100vh - 64px - 64px)', minHeight: '500px' }}
+    <div
+      className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-20 flex flex-col"
+      style={{ height: 'calc(100dvh - 64px - 64px)', minHeight: '400px' }}
     >
-      <div className="flex items-center justify-between mb-4 shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-amber-500" />
-            Chat Asistente
-          </h1>
-          <p className="text-zinc-500 text-sm mt-0.5">Tu asistente virtual de Chambatina</p>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-6 w-6 text-amber-500" />
+          <h1 className="text-xl font-bold text-zinc-900">Chat Asistente</h1>
         </div>
         {messages.length > 0 && (
-          <Button variant="ghost" size="sm" className="text-zinc-400" onClick={clearChat}>
+          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-600" onClick={clearChat}>
             <Trash2 className="h-4 w-4 mr-1" /> Limpiar
           </Button>
         )}
       </div>
 
-      <Card className="flex-1 flex flex-col border-0 shadow-md overflow-hidden min-h-0">
-        {/* Messages Area */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 scroll-smooth">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center py-12">
-              <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-4">
-                <MessageCircle className="h-8 w-8 text-amber-500" />
+      {/* Chat container */}
+      <Card className="flex-1 flex flex-col border shadow-sm overflow-hidden min-h-0">
+        {/* Messages - scrollable area */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto p-4"
+          style={{ scrollBehavior: 'smooth' }}
+        >
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mb-3">
+                <MessageCircle className="h-7 w-7 text-amber-500" />
               </div>
-              <h3 className="text-lg font-semibold text-zinc-700 mb-2">¡Hola! 👋</h3>
-              <p className="text-sm text-zinc-400 max-w-sm mb-6">
-                Soy el asistente virtual de Chambatina. Puedo ayudarte con precios, rastreo y más.
+              <h3 className="text-base font-semibold text-zinc-700 mb-1">Hola, en que te ayudo?</h3>
+              <p className="text-sm text-zinc-400 max-w-xs">
+                Escribe tu pregunta abajo o prueba una sugerencia
               </p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {QUICK_QUESTIONS.map(q => (
-                  <Button
-                    key={q}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-auto py-2 px-3 text-zinc-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
-                    onClick={() => sendMessage(q)}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                >
+                  {/* Avatar */}
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                      msg.role === 'user'
+                        ? 'bg-zinc-800 text-white'
+                        : 'bg-amber-100 text-amber-600'
+                    }`}
                   >
-                    {q}
-                  </Button>
-                ))}
-              </div>
+                    {msg.role === 'user' ? 'Tu' : <Sparkles className="h-3.5 w-3.5" />}
+                  </div>
+
+                  {/* Bubble */}
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-zinc-800 text-white rounded-tr-sm'
+                        : 'bg-zinc-100 text-zinc-800 rounded-tl-sm'
+                    }`}
+                  >
+                    {msg.role === 'assistant' ? renderContent(msg.content) : msg.content}
+                  </div>
+                </div>
+              ))}
+
+              {/* Loading indicator */}
+              {loading && (
+                <div className="flex gap-2">
+                  <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                  </div>
+                  <div className="bg-zinc-100 rounded-2xl rounded-tl-sm px-4 py-3">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-
-          <AnimatePresence mode="popLayout">
-            {messages.map((msg, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className={`flex gap-3 mb-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                {/* Avatar */}
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                    msg.role === 'user'
-                      ? 'bg-zinc-200'
-                      : 'bg-amber-100'
-                  }`}
-                >
-                  {msg.role === 'user' ? (
-                    <span className="text-xs font-bold text-zinc-600">Tú</span>
-                  ) : (
-                    <Sparkles className="h-4 w-4 text-amber-600" />
-                  )}
-                </div>
-
-                {/* Bubble */}
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-zinc-800 text-white rounded-tr-sm'
-                      : 'bg-zinc-100 text-zinc-800 rounded-tl-sm'
-                  }`}
-                >
-                  {msg.role === 'assistant' ? renderContent(msg.content) : msg.content}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {loading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex gap-3 mb-4"
-            >
-              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <Sparkles className="h-4 w-4 text-amber-600" />
-              </div>
-              <div className="bg-zinc-100 rounded-2xl rounded-tl-sm px-4 py-3">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
-            </motion.div>
-          )}
-          {/* Invisible anchor to scroll to */}
-          <div ref={messagesEndRef} />
+          {/* Scroll anchor */}
+          <div ref={bottomRef} />
         </div>
 
-        {/* Input - always visible at bottom with sticky behavior */}
-        <div className="p-3 border-t bg-zinc-50 shrink-0 sticky bottom-0 z-10">
+        {/* Input area - fixed at bottom of card, always visible */}
+        <div className="p-3 border-t border-zinc-200 bg-white">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -233,19 +190,21 @@ export function ChatIA() {
             }}
             className="flex gap-2"
           >
-            <Input
+            <input
               ref={inputRef}
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu pregunta..."
-              className="flex-1"
               disabled={loading}
+              autoFocus
+              className="flex-1 h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <Button
               type="submit"
               disabled={loading || !input.trim()}
-              className="bg-amber-500 hover:bg-amber-600 text-white px-4"
+              className="bg-amber-500 hover:bg-amber-600 text-white h-10 px-4"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -256,6 +215,6 @@ export function ChatIA() {
           </form>
         </div>
       </Card>
-    </motion.div>
+    </div>
   );
 }
