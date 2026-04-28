@@ -7,23 +7,22 @@ import { searchSolvedCargo, mapEstado } from '@/lib/solvedcargo';
 // Synced with solvedcargo.ts mapEstado - uses same SolvedCargo logistics logic
 function matchEtapa(estado: string) {
   const upper = estado.toUpperCase().trim();
-  const e = ETAPAS.find;
 
   // Exact 13-stage matches
-  if (upper === 'ENTREGADO' || upper === 'ENTREGADO PP' || upper === 'ENTREGADO V') return e(et => et.estado === 'ENTREGADO');
-  if (upper.includes('DISTRIBUCION') || upper.includes('REPARTO')) return e(et => et.estado === 'EN DISTRIBUCION');
-  if (upper.includes('ALMACEN') && hasProvinciaMatch(upper)) return e(et => et.estado === 'ALMACEN PROVINCIAL');
-  if ((upper.startsWith('EN TRANSITO') || upper.startsWith('EN TRÁNSITO')) && hasProvinciaMatch(upper)) return e(et => et.estado === 'TRASLADO PROVINCIA');
-  if (upper.includes('ESPERA DE TRANSITO') || upper.includes('CLASIFICADO')) return e(et => et.estado === 'CLASIFICACION');
-  if (upper.includes('ALMACEN')) return e(et => et.estado === 'ALMACEN CENTRAL');
-  if (upper === 'CLASIFICACION' || upper.includes('CLASIFICACIÓN')) return e(et => et.estado === 'CLASIFICACION');
-  if (upper === 'DESPACHADO' || upper.includes('ADUANA')) return e(et => et.estado === 'EN ADUANA');
-  if (upper === 'DESAGRUPADO' || upper.includes('PENDIENTE DESAGRUPE') || upper.includes('DESGRUPE')) return e(et => et.estado === 'DESGRUPE');
-  if (upper === 'ARRIBO' || upper.includes('NAVIERA') || upper.includes('PUERTO')) return e(et => et.estado === 'EN NAVIERA');
-  if (upper === 'EN TRANSITO' || upper === 'EN TRÁNSITO' || upper === 'EMBARCADO' || upper.includes('RUMBO') || upper.includes('NAVEGACION')) return e(et => et.estado === 'EN TRANSITO');
-  if (upper.includes('CONTENEDOR') || upper.includes('ESTIBA')) return e(et => et.estado === 'EN CONTENEDOR');
-  if (upper.includes('TRANSPORTE')) return e(et => et.estado === 'TRANSPORTE A NAVIERA');
-  if (upper === 'EN AGENCIA' || upper === 'FALTANTE' || upper === 'PERDIDA' || upper.includes('RECIBIDO')) return e(et => et.estado === 'EN AGENCIA');
+  if (upper === 'ENTREGADO' || upper === 'ENTREGADO PP' || upper === 'ENTREGADO V') return ETAPAS.find(et => et.estado === 'ENTREGADO');
+  if (upper.includes('DISTRIBUCION') || upper.includes('REPARTO')) return ETAPAS.find(et => et.estado === 'EN DISTRIBUCION');
+  if (upper.includes('ALMACEN') && hasProvinciaMatch(upper)) return ETAPAS.find(et => et.estado === 'ALMACEN PROVINCIAL');
+  if ((upper.startsWith('EN TRANSITO') || upper.startsWith('EN TRÁNSITO')) && hasProvinciaMatch(upper)) return ETAPAS.find(et => et.estado === 'TRASLADO PROVINCIA');
+  if (upper.includes('ESPERA DE TRANSITO') || upper.includes('CLASIFICADO')) return ETAPAS.find(et => et.estado === 'CLASIFICACION');
+  if (upper.includes('ALMACEN')) return ETAPAS.find(et => et.estado === 'ALMACEN CENTRAL');
+  if (upper === 'CLASIFICACION' || upper.includes('CLASIFICACIÓN')) return ETAPAS.find(et => et.estado === 'CLASIFICACION');
+  if (upper === 'DESPACHADO' || upper.includes('ADUANA')) return ETAPAS.find(et => et.estado === 'EN ADUANA');
+  if (upper === 'DESAGRUPADO' || upper.includes('PENDIENTE DESAGRUPE') || upper.includes('DESGRUPE')) return ETAPAS.find(et => et.estado === 'DESGRUPE');
+  if (upper === 'ARRIBO' || upper.includes('NAVIERA') || upper.includes('PUERTO')) return ETAPAS.find(et => et.estado === 'EN NAVIERA');
+  if (upper === 'EN TRANSITO' || upper === 'EN TRÁNSITO' || upper === 'EMBARCADO' || upper.includes('RUMBO') || upper.includes('NAVEGACION')) return ETAPAS.find(et => et.estado === 'EN TRANSITO');
+  if (upper.includes('CONTENEDOR') || upper.includes('ESTIBA')) return ETAPAS.find(et => et.estado === 'EN CONTENEDOR');
+  if (upper.includes('TRANSPORTE')) return ETAPAS.find(et => et.estado === 'TRANSPORTE A NAVIERA');
+  if (upper === 'EN AGENCIA' || upper === 'FALTANTE' || upper === 'PERDIDA' || upper.includes('RECIBIDO')) return ETAPAS.find(et => et.estado === 'EN AGENCIA');
 
   // Fallback: substring match
   for (const etapa of ETAPAS) {
