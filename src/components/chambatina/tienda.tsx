@@ -99,18 +99,9 @@ export function Tienda() {
     </div>
   );
 
-  if (products.length === 0) return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-      <motion.div {...fadeIn} transition={{ duration: 0.4 }}>
-        <div className="w-16 h-16 rounded-full bg-zinc-100 flex items-center justify-center mx-auto mb-4"><ShoppingCart className="h-8 w-8 text-zinc-300" /></div>
-        <h2 className="text-xl font-semibold text-zinc-700">Tienda en preparación</h2>
-        <p className="text-zinc-400 mt-2">Pronto tendremos productos disponibles para ti.</p>
-      </motion.div>
-    </div>
-  );
-
   const categories = Object.keys(grouped);
   const tabConfigs = categories.map((cat) => ({ value: cat, config: CATEGORY_CONFIG[cat] || DEFAULT_CONFIG }));
+  const hasProducts = products.length > 0;
 
   return (
     <motion.div {...fadeIn} transition={{ duration: 0.4 }} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -128,7 +119,7 @@ export function Tienda() {
         </div>
       </div>
 
-      {/* ===== COMPRAR POR PLATAFORMA - PROMINENT CTA ===== */}
+      {/* ===== COMPRAR POR PLATAFORMA - SIEMPRE VISIBLE ===== */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -194,81 +185,121 @@ export function Tienda() {
         </Card>
       </motion.div>
 
-      {/* Store Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-zinc-100 p-1 flex-wrap h-auto gap-1">
-          {tabConfigs.map(({ value, config }) => {
-            const Icon = config.icon;
-            return <TabsTrigger key={value} value={value} className="gap-1.5 data-[state=active]:bg-amber-500 data-[state=active]:text-white"><Icon className="h-4 w-4" />{config.label}</TabsTrigger>;
-          })}
-        </TabsList>
-        {tabConfigs.map(({ value }) => {
-          const catProducts = grouped[value] || [];
-          return (
-            <TabsContent key={value} value={value}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {catProducts.map((product) => {
-                  const hasImage = product.imagenUrl && !imgErrors.has(product.id);
-                  const platformLinks = getPlatformLinks(product);
-                  return (
-                    <Card key={product.id} className="border-0 shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-                      {hasImage ? (
-                        <div className="w-full h-44 relative bg-zinc-100"><img src={product.imagenUrl!} alt={product.nombre} className="w-full h-full object-cover" onError={() => handleImageError(product.id)} /></div>
-                      ) : (
-                        <div className="w-full h-32 flex items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100"><div className="w-14 h-14 rounded-xl bg-white shadow-sm flex items-center justify-center"><ImageIcon className="h-7 w-7 text-zinc-300" /></div></div>
-                      )}
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-lg leading-tight">{product.nombre}</CardTitle>
-                          <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-xs shrink-0">${product.precio.toFixed(2)}</Badge>
-                        </div>
-                        {product.descripcion && <CardDescription className="text-xs line-clamp-2">{product.descripcion}</CardDescription>}
-                      </CardHeader>
-                      <CardContent className="pt-0 space-y-2">
-                        {/* Primary: Lo compramos por ti */}
-                        <button
-                          onClick={() => handleComprar(product)}
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white min-h-[44px] touch-manipulation"
-                        >
-                          <ShoppingCart className="h-4 w-4 mr-1.5" />
-                          Lo compramos por ti
-                        </button>
-
-                        {/* Platform-specific links */}
-                        {platformLinks.length > 0 && (
-                          <div className="space-y-1.5">
-                            {platformLinks.slice(0, 2).map((link) => (
-                              <a
-                                key={link.url}
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-xs font-semibold transition-all text-white shadow-sm bg-gradient-to-r ${link.gradient} hover:opacity-90 min-h-[40px] touch-manipulation`}
-                              >
-                                <span className="font-bold text-[10px]">{link.icon}</span>
-                                Ver en {link.nombre}
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            ))}
-                            {platformLinks.length > 2 && (
-                              <button
-                                onClick={() => handleComprar(product)}
-                                className="flex items-center justify-center gap-1 w-full py-1.5 rounded-lg text-xs text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 transition-colors"
-                              >
-                                +{platformLinks.length - 2} plataformas mas
-                              </button>
-                            )}
-                          </div>
+      {/* ===== PRODUCTOS DE LA TIENDA ===== */}
+      {hasProducts ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="bg-zinc-100 p-1 flex-wrap h-auto gap-1">
+            {tabConfigs.map(({ value, config }) => {
+              const Icon = config.icon;
+              return <TabsTrigger key={value} value={value} className="gap-1.5 data-[state=active]:bg-amber-500 data-[state=active]:text-white"><Icon className="h-4 w-4" />{config.label}</TabsTrigger>;
+            })}
+          </TabsList>
+          {tabConfigs.map(({ value }) => {
+            const catProducts = grouped[value] || [];
+            return (
+              <TabsContent key={value} value={value}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {catProducts.map((product) => {
+                    const hasImage = product.imagenUrl && !imgErrors.has(product.id);
+                    const platformLinks = getPlatformLinks(product);
+                    return (
+                      <Card key={product.id} className="border-0 shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+                        {hasImage ? (
+                          <div className="w-full h-44 relative bg-zinc-100"><img src={product.imagenUrl!} alt={product.nombre} className="w-full h-full object-cover" onError={() => handleImageError(product.id)} /></div>
+                        ) : (
+                          <div className="w-full h-32 flex items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100"><div className="w-14 h-14 rounded-xl bg-white shadow-sm flex items-center justify-center"><ImageIcon className="h-7 w-7 text-zinc-300" /></div></div>
                         )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </TabsContent>
-          );
-        })}
-      </Tabs>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-lg leading-tight">{product.nombre}</CardTitle>
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-xs shrink-0">${product.precio.toFixed(2)}</Badge>
+                          </div>
+                          {product.descripcion && <CardDescription className="text-xs line-clamp-2">{product.descripcion}</CardDescription>}
+                        </CardHeader>
+                        <CardContent className="pt-0 space-y-2">
+                          {/* Primary: Lo compramos por ti */}
+                          <button
+                            onClick={() => handleComprar(product)}
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-semibold transition-colors bg-amber-500 hover:bg-amber-600 text-white min-h-[44px] touch-manipulation"
+                          >
+                            <ShoppingCart className="h-4 w-4 mr-1.5" />
+                            Lo compramos por ti
+                          </button>
+
+                          {/* Platform-specific links */}
+                          {platformLinks.length > 0 && (
+                            <div className="space-y-1.5">
+                              {platformLinks.slice(0, 2).map((link) => (
+                                <a
+                                  key={link.url}
+                                  href={link.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-xs font-semibold transition-all text-white shadow-sm bg-gradient-to-r ${link.gradient} hover:opacity-90 min-h-[40px] touch-manipulation`}
+                                >
+                                  <span className="font-bold text-[10px]">{link.icon}</span>
+                                  Ver en {link.nombre}
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              ))}
+                              {platformLinks.length > 2 && (
+                                <button
+                                  onClick={() => handleComprar(product)}
+                                  className="flex items-center justify-center gap-1 w-full py-1.5 rounded-lg text-xs text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 transition-colors"
+                                >
+                                  +{platformLinks.length - 2} plataformas mas
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
+      ) : (
+        /* ===== SIN PRODUCTOS - Seccion "Proximamente" ===== */
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="text-center py-8"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 flex items-center justify-center mx-auto mb-5 shadow-sm">
+            <ShoppingBag className="h-10 w-10 text-amber-400" />
+          </div>
+          <h3 className="text-xl font-bold text-zinc-800">Productos disponibles muy pronto</h3>
+          <p className="text-zinc-500 mt-2 max-w-md mx-auto leading-relaxed">
+            Estamos preparando nuestra tienda con los mejores productos y precios.
+            Mientras tanto, puedes comprar cualquier producto de tu plataforma favorita usando el boton de arriba.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2 mt-5">
+            {[
+              { icon: Zap, label: 'Envios', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+              { icon: Bike, label: 'Bicicletas', color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200' },
+              { icon: Box, label: 'Cajas', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
+              { icon: Sun, label: 'Solar', color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200' },
+            ].map(({ icon: Icon, label, color, bg }) => (
+              <span key={label} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${color} ${bg} border`}>
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </span>
+            ))}
+          </div>
+          <Button
+            onClick={() => setCurrentView('compra-plataforma')}
+            className="mt-6 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-bold px-8 py-5 text-sm shadow-lg shadow-orange-500/20 min-h-[48px] touch-manipulation"
+          >
+            <Link2 className="h-4 w-4 mr-2" />
+            Comprar algo ahora desde cualquier plataforma
+          </Button>
+        </motion.div>
+      )}
+
       <div className="md:hidden h-20" />
     </motion.div>
   );
