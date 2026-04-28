@@ -160,6 +160,17 @@ async function getListRecords(session: SolvedCargoSession, option: string, where
   }
 }
 
+// Check if the estado string contains a Cuban province name
+function hasProvincia(text: string): boolean {
+  const provincias = [
+    'PINAR DEL RIO', 'ARTEMISA', 'LA HABANA', 'MAYABEQUE', 'MATANZAS',
+    'VILLA CLARA', 'CIENFUEGOS', 'SANCTI SPIRITUS', 'CIEGO DE AVILA',
+    'CAMAGUEY', 'LAS TUNAS', 'HOLGUIN', 'GRANMA', 'SANTIAGO DE CUBA',
+    'GUANTANAMO', 'ISLA DE LA JUVENTUD',
+  ];
+  return provincias.some(p => text.includes(p));
+}
+
 /**
  * Map SolvedCargo estado string to our 13-stage system
  *
@@ -282,17 +293,6 @@ export function mapEstado(estadoRaw: string): string {
   }
 
   return upper || 'EN AGENCIA';
-}
-
-// Check if the estado string contains a Cuban province name
-function hasProvincia(text: string): boolean {
-  const provincias = [
-    'PINAR DEL RIO', 'ARTEMISA', 'LA HABANA', 'MAYABEQUE', 'MATANZAS',
-    'VILLA CLARA', 'CIENFUEGOS', 'SANCTI SPIRITUS', 'CIEGO DE AVILA',
-    'CAMAGUEY', 'LAS TUNAS', 'HOLGUIN', 'GRANMA', 'SANTIAGO DE CUBA',
-    'GUANTANAMO', 'ISLA DE LA JUVENTUD',
-  ];
-  return provincias.some(p => text.includes(p));
 }
 
 /**
