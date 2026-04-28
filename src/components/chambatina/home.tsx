@@ -22,6 +22,8 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { calcularEnvio, type EnvioTipo } from '@/lib/chambatina';
+import { MarketingWidget } from './marketing';
+import { WhatsAppFloat } from './marketing';
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -335,6 +337,11 @@ export function Home() {
             </CardContent>
           </Card>
         </motion.div>
+      </section>
+
+      {/* Marketing Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <MarketingWidget />
       </section>
 
       {/* AI Chat Promo */}

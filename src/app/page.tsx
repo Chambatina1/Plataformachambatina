@@ -22,6 +22,7 @@ import { AITrainingPanel } from '@/components/chambatina/ai-training-panel';
 import { AparienciaPanel } from '@/components/chambatina/apariencia-panel';
 import { UsersPanel } from '@/components/chambatina/users-panel';
 import { Servicios } from '@/components/chambatina/servicios';
+import { WhatsAppFloat } from '@/components/chambatina/marketing';
 import { Button } from '@/components/ui/button';
 
 // Error-safe component wrapper
@@ -318,6 +319,7 @@ export default function Page() {
         </main>
         <LoginDialog />
         <RegisterDialog />
+        {mode === 'public' && <WhatsAppFloat />}
       </div>
       <script
         dangerouslySetInnerHTML={{

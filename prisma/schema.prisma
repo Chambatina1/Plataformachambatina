@@ -120,9 +120,44 @@ model User {
   isActive     Boolean?    @default(true)
   registeredAt DateTime?   @default(now()) @db.Timestamp(6)
   updatedAt    DateTime?   @default(now()) @db.Timestamp(6)
+  referralCode String?   @unique @db.VarChar(10)
+  referrals    Referral[] @relation("Referrer")
+  referredByReferrals Referral[] @relation("Referred")
+  testimonios  Testimonio[]
   EmailLog     EmailLog[]
   visits       UserVisit[]
   services     ServiceListing[]
+}
+
+model Referral {
+  id             Int      @id @default(autoincrement())
+  referrerId     Int
+  referredId     Int      @unique
+  codigo         String   @db.VarChar(10)
+  recompensa     String   @default("5% descuento")
+  usado          Boolean  @default(false)
+  createdAt      DateTime @default(now()) @db.Timestamp(6)
+
+  referrer       User     @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred       User     @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@index([codigo])
+}
+
+model Testimonio {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  nombre      String
+  texto       String
+  rating      Int      @default(5)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([activo])
 }
 
 model ServiceListing {
