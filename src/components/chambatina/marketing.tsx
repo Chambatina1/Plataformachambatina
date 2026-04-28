@@ -31,15 +31,18 @@ import { toast } from 'sonner';
 // =========================================
 // 1. WHATSAPP FLOATING BUTTON
 // =========================================
-const CHAMBATINA_WHATSAPP = '0000000000'; // Replace with real number
+const CHAMBATINA_WHATSAPP_NUMBERS = [
+  { name: 'Ventas', number: '17869426904', label: 'Pedidos y cotizaciones' },
+  { name: 'Soporte', number: '17867846421', label: 'Consultas y soporte' },
+];
 
 export function WhatsAppFloat() {
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const handleSend = () => {
+  const handleSend = (number: string) => {
     const text = encodeURIComponent(msg || 'Hola, quiero informacion sobre Chambatina');
-    window.open(`https://wa.me/${CHAMBATINA_WHATSAPP}?text=${text}`, '_blank');
+    window.open(`https://wa.me/${number}?text=${text}`, '_blank');
     setOpen(false);
   };
 
@@ -70,21 +73,36 @@ export function WhatsAppFloat() {
             </div>
             <div className="p-3">
               <p className="text-xs text-zinc-500 mb-2">Escribe tu mensaje:</p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-3">
                 <input
                   value={msg}
                   onChange={(e) => setMsg(e.target.value)}
                   placeholder="Hola, necesito..."
                   className="flex-1 h-9 px-3 rounded-lg border border-zinc-200 text-xs"
                   style={{ color: '#18181b' }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend(CHAMBATINA_WHATSAPP_NUMBERS[0].number)}
                 />
-                <button
-                  onClick={handleSend}
-                  className="h-9 w-9 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center justify-center transition-colors"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
+              </div>
+              {/* Two contact options */}
+              <div className="space-y-2">
+                {CHAMBATINA_WHATSAPP_NUMBERS.map((contact) => (
+                  <button
+                    key={contact.number}
+                    onClick={() => handleSend(contact.number)}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-green-50 hover:bg-green-100 border border-green-100 transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                      <Send className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-green-800">{contact.name}</p>
+                      <p className="text-[10px] text-green-600">{contact.label}</p>
+                    </div>
+                    <div className="text-[10px] text-green-500 font-mono">
+                      {contact.number.slice(-4)}
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </motion.div>
