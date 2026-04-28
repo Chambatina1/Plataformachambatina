@@ -251,9 +251,34 @@ export function CompraPlataforma() {
   }, [currentUser]);
 
   // Load frequent recipients when step 3 starts
+  // If only 1 frequent recipient exists, auto-fill to save user effort
   useEffect(() => {
     if (step === 3) {
-      setDestinatarios(loadDestinatarios());
+      const dests = loadDestinatarios();
+      setDestinatarios(dests);
+
+      // Auto-fill when there's exactly 1 frequent recipient and form fields are empty
+      if (dests.length === 1) {
+        const dest = dests[0];
+        const currentDest = form.nombreDestinatario.trim();
+        if (!currentDest) {
+          setForm((prev) => ({
+            ...prev,
+            nombreDestinatario: dest.nombre,
+            telefonoDestinatario: dest.telefono,
+            carnetDestinatario: dest.carnet || '',
+            direccionDestinatario: dest.direccion,
+          }));
+          setErrors((prev) => ({
+            ...prev,
+            nombreDestinatario: undefined,
+            telefonoDestinatario: undefined,
+            carnetDestinatario: undefined,
+            direccionDestinatario: undefined,
+          }));
+          toast.success(`Datos de ${dest.nombre} cargados automaticamente`);
+        }
+      }
     }
   }, [step]);
 
