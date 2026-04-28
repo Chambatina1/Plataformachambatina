@@ -115,7 +115,7 @@ export function UsersPanel() {
     setTogglingId(user.id);
     try {
       const res = await fetch(`/api/users`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: user.id, isActive: !user.isActive }),
       });
@@ -423,20 +423,20 @@ export function UsersPanel() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-8 w-8 p-0 text-zinc-500 hover:text-amber-600"
-                                onClick={() => setSelectedUser(user)}
+                                className="h-9 w-9 p-0 text-zinc-500 hover:text-amber-600"
+                                onClick={(e) => { e.stopPropagation(); setSelectedUser(user); }}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className={`h-8 w-8 p-0 ${
+                                className={`h-9 w-9 p-0 ${
                                   user.isActive
-                                    ? 'text-zinc-500 hover:text-red-600'
-                                    : 'text-zinc-500 hover:text-emerald-600'
+                                    ? 'text-zinc-500 hover:text-red-600 hover:bg-red-50'
+                                    : 'text-zinc-500 hover:text-emerald-600 hover:bg-emerald-50'
                                 }`}
-                                onClick={() => toggleActive(user)}
+                                onClick={(e) => { e.stopPropagation(); toggleActive(user); }}
                                 disabled={togglingId === user.id}
                               >
                                 {togglingId === user.id ? (

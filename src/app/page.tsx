@@ -9,6 +9,7 @@ import { RegisterDialog } from '@/components/chambatina/register-dialog';
 import { LoginGate } from '@/components/chambatina/login-gate';
 import { Home } from '@/components/chambatina/home';
 import { Tienda } from '@/components/chambatina/tienda';
+import { CompraPlataforma } from '@/components/chambatina/compra-plataforma';
 import { PedidosList } from '@/components/chambatina/pedidos-list';
 import { PedidoForm } from '@/components/chambatina/pedido-form';
 import { PedidoDetail } from '@/components/chambatina/pedido-detail';
@@ -225,6 +226,7 @@ export default function Page() {
       switch (currentView) {
         case 'home': return <Home />;
         case 'tienda': return <Tienda />;
+        case 'compra-plataforma': return <CompraPlataforma />;
         case 'rastreador': return <Rastreador />;
         case 'chat': return <ChatIA />;
         case 'servicios': return <Servicios />;

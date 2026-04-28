@@ -10,6 +10,10 @@ const createSchema = z.object({
   precio: z.coerce.number().positive('El precio debe ser mayor a 0'),
   categoria: z.string().min(1, 'La categoría es requerida'),
   tiktokUrl: optionalUrl,
+  amazonUrl: optionalUrl,
+  aliexpressUrl: optionalUrl,
+  sheinUrl: optionalUrl,
+  mercadoLibreUrl: optionalUrl,
   imagenUrl: optionalUrl,
   activo: z.boolean().optional().default(true),
   orden: z.number().int().optional().default(0),
@@ -22,6 +26,10 @@ const updateSchema = z.object({
   precio: z.coerce.number().positive().optional(),
   categoria: z.string().min(1).optional(),
   tiktokUrl: optionalUrl,
+  amazonUrl: optionalUrl,
+  aliexpressUrl: optionalUrl,
+  sheinUrl: optionalUrl,
+  mercadoLibreUrl: optionalUrl,
   imagenUrl: optionalUrl,
   activo: z.boolean().optional(),
   orden: z.number().int().optional(),
@@ -83,6 +91,10 @@ export async function POST(request: NextRequest) {
         precio: data.precio,
         categoria: data.categoria,
         tiktokUrl: data.tiktokUrl || null,
+        amazonUrl: data.amazonUrl || null,
+        aliexpressUrl: data.aliexpressUrl || null,
+        sheinUrl: data.sheinUrl || null,
+        mercadoLibreUrl: data.mercadoLibreUrl || null,
         imagenUrl: data.imagenUrl || null,
         activo: data.activo,
         orden: data.orden,
@@ -133,6 +145,14 @@ export async function PUT(request: NextRequest) {
     if (updateData.categoria !== undefined) data.categoria = updateData.categoria;
     if (updateData.tiktokUrl !== undefined)
       data.tiktokUrl = updateData.tiktokUrl || null;
+    if (updateData.amazonUrl !== undefined)
+      data.amazonUrl = updateData.amazonUrl || null;
+    if (updateData.aliexpressUrl !== undefined)
+      data.aliexpressUrl = updateData.aliexpressUrl || null;
+    if (updateData.sheinUrl !== undefined)
+      data.sheinUrl = updateData.sheinUrl || null;
+    if (updateData.mercadoLibreUrl !== undefined)
+      data.mercadoLibreUrl = updateData.mercadoLibreUrl || null;
     if (updateData.imagenUrl !== undefined)
       data.imagenUrl = updateData.imagenUrl || null;
     if (updateData.activo !== undefined) data.activo = updateData.activo;

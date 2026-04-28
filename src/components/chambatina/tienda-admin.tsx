@@ -28,8 +28,9 @@ import { toast } from 'sonner';
 
 interface Product {
   id: number; nombre: string; descripcion: string | null; precio: number;
-  categoria: string; tiktokUrl: string | null; imagenUrl: string | null;
-  activo: boolean; orden: number;
+  categoria: string; tiktokUrl: string | null; amazonUrl: string | null;
+  aliexpressUrl: string | null; sheinUrl: string | null; mercadoLibreUrl: string | null;
+  imagenUrl: string | null; activo: boolean; orden: number;
 }
 
 const CATEGORIAS = [
@@ -46,12 +47,16 @@ const CATEGORIA_COLORS: Record<string, string> = {
 
 interface ProductForm {
   nombre: string; descripcion: string; precio: string; categoria: string;
-  tiktokUrl: string; imagenUrl: string; activo: boolean; orden: string;
+  tiktokUrl: string; amazonUrl: string; aliexpressUrl: string;
+  sheinUrl: string; mercadoLibreUrl: string; imagenUrl: string;
+  activo: boolean; orden: string;
 }
 
 const EMPTY_FORM: ProductForm = {
   nombre: '', descripcion: '', precio: '', categoria: 'general',
-  tiktokUrl: '', imagenUrl: '', activo: true, orden: '0',
+  tiktokUrl: '', amazonUrl: '', aliexpressUrl: '',
+  sheinUrl: '', mercadoLibreUrl: '', imagenUrl: '',
+  activo: true, orden: '0',
 };
 
 function safeErrorMessage(err: unknown): string {
@@ -95,7 +100,9 @@ export function TiendaAdmin() {
     setForm({
       nombre: product.nombre, descripcion: product.descripcion || '',
       precio: String(product.precio), categoria: product.categoria,
-      tiktokUrl: product.tiktokUrl || '', imagenUrl: product.imagenUrl || '',
+      tiktokUrl: product.tiktokUrl || '', amazonUrl: product.amazonUrl || '',
+      aliexpressUrl: product.aliexpressUrl || '', sheinUrl: product.sheinUrl || '',
+      mercadoLibreUrl: product.mercadoLibreUrl || '', imagenUrl: product.imagenUrl || '',
       activo: product.activo, orden: String(product.orden),
     });
     setDialogOpen(true);
@@ -206,7 +213,7 @@ export function TiendaAdmin() {
           { label: 'Total Productos', value: products.length, bg: 'bg-amber-50' },
           { label: 'Activos', value: products.filter((p) => p.activo).length, bg: 'bg-emerald-50' },
           { label: 'Inactivos', value: products.filter((p) => !p.activo).length, bg: 'bg-zinc-50' },
-          { label: 'Con Link de Compra', value: products.filter((p) => p.tiktokUrl).length, bg: 'bg-amber-50' },
+          { label: 'Con Link de Plataforma', value: products.filter((p) => p.tiktokUrl || p.amazonUrl || p.aliexpressUrl || p.sheinUrl || p.mercadoLibreUrl).length, bg: 'bg-amber-50' },
         ].map((stat) => (
           <Card key={stat.label} className="border-0 shadow-sm">
             <CardContent className={`p-3 sm:p-4 ${stat.bg} rounded-xl`}>
@@ -240,7 +247,7 @@ export function TiendaAdmin() {
                     <TableHead>Nombre</TableHead>
                     <TableHead className="hidden sm:table-cell">Categoría</TableHead>
                     <TableHead className="hidden md:table-cell">Precio</TableHead>
-                    <TableHead className="hidden lg:table-cell">Link Compra</TableHead>
+                    <TableHead className="hidden lg:table-cell">Plataformas</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -266,9 +273,23 @@ export function TiendaAdmin() {
                         <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className={`text-xs ${CATEGORIA_COLORS[product.categoria] || 'bg-zinc-100 text-zinc-700'}`}>{getCategoriaLabel(product.categoria)}</Badge></TableCell>
                         <TableCell className="hidden md:table-cell text-sm font-medium">${product.precio.toFixed(2)}</TableCell>
                         <TableCell className="hidden lg:table-cell">
-                          {product.tiktokUrl ? (
-                            <a href={product.tiktokUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"><ExternalLink className="h-3 w-3" />Ver Link</a>
-                          ) : <span className="text-xs text-zinc-300">—</span>}
+                          {(() => {
+                            const links = [
+                              product.tiktokUrl ? 'TT' : null,
+                              product.amazonUrl ? 'AZ' : null,
+                              product.aliexpressUrl ? 'AL' : null,
+                              product.sheinUrl ? 'SH' : null,
+                              product.mercadoLibreUrl ? 'ML' : null,
+                            ].filter(Boolean);
+                            if (links.length === 0) return <span className="text-xs text-zinc-300">—</span>;
+                            return (
+                              <div className="flex items-center gap-1">
+                                {links.map((l) => (
+                                  <span key={l} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-600">{l}</span>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell><Switch checked={product.activo} onCheckedChange={() => toggleActive(product)} /></TableCell>
                         <TableCell className="text-right">
@@ -333,10 +354,17 @@ export function TiendaAdmin() {
               )}
               <details className="mt-1"><summary className="text-xs text-zinc-400 cursor-pointer hover:text-zinc-600 transition-colors">O pegar URL de imagen...</summary><Input className="mt-1" value={form.imagenUrl} onChange={(e) => setForm({ ...form, imagenUrl: e.target.value })} placeholder="https://ejemplo.com/imagen.jpg" /></details>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-medium">Link de Afiliados (TikTok Shop)</Label>
-              <Input value={form.tiktokUrl} onChange={(e) => setForm({ ...form, tiktokUrl: e.target.value })} placeholder="https://www.tiktok.com/..." />
-              <p className="text-xs text-zinc-400">Link comisionable de TikTok. Compártelo por WhatsApp a clientes que puedan verlo (fuera de USA).</p>
+            <div className="space-y-3">
+              <Label className="text-xs font-medium flex items-center gap-2">
+                <span className="w-5 h-5 rounded bg-gradient-to-br from-zinc-800 to-black text-white text-[8px] font-bold flex items-center justify-center">TT</span>
+                Links de Plataformas (opcional)
+              </Label>
+              <Input value={form.tiktokUrl} onChange={(e) => setForm({ ...form, tiktokUrl: e.target.value })} placeholder="TikTok Shop: https://www.tiktok.com/..." />
+              <Input value={form.amazonUrl} onChange={(e) => setForm({ ...form, amazonUrl: e.target.value })} placeholder="Amazon: https://www.amazon.com/dp/..." />
+              <Input value={form.aliexpressUrl} onChange={(e) => setForm({ ...form, aliexpressUrl: e.target.value })} placeholder="AliExpress: https://www.aliexpress.com/item/..." />
+              <Input value={form.sheinUrl} onChange={(e) => setForm({ ...form, sheinUrl: e.target.value })} placeholder="SHEIN: https://www.shein.com/..." />
+              <Input value={form.mercadoLibreUrl} onChange={(e) => setForm({ ...form, mercadoLibreUrl: e.target.value })} placeholder="MercadoLibre: https://www.mercadolibre.com/..." />
+              <p className="text-xs text-zinc-400">Agrega los links de compra en cada plataforma. Los clientes podran acceder directamente.</p>
             </div>
             {editingId && (
               <div className="space-y-2">
