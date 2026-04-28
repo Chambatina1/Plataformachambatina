@@ -21,7 +21,7 @@ function matchEtapa(estado: string) {
   if (upper.includes('ADUANA')) return ETAPAS.find(e => e.estado === 'EN ADUANA');
   if (upper.includes('DESGRUPE') || upper.includes('DESTUFFING')) return ETAPAS.find(e => e.estado === 'DESGRUPE');
   if (upper.includes('NAVIERA') || upper.includes('PUERTO') || upper.includes('ARRIBO')) return ETAPAS.find(e => e.estado === 'EN NAVIERA');
-  if (upper.includes('CONTENEDOR') || upper.includes('ESTIBA')) return ETAPAS.find(e => e.estado === 'EN CONTENEDOR');
+  if (upper.includes('CONTENEDOR') || upper.includes('ESTIBA') || upper.includes('CARGADO')) return ETAPAS.find(e => e.estado === 'EN CONTENEDOR');
   if (upper.includes('TRANSITO') || upper.includes('TRÁNSITO') || upper.includes('RUMBO')) return ETAPAS.find(e => e.estado === 'EN TRANSITO');
   if (upper.includes('TRANSPORTE')) return ETAPAS.find(e => e.estado === 'TRANSPORTE A NAVIERA');
   if (upper.includes('AGENCIA') || upper.includes('RECIBIDO') || upper.includes('PENDIENTE')) return ETAPAS.find(e => e.estado === 'EN AGENCIA');
@@ -30,7 +30,7 @@ function matchEtapa(estado: string) {
 }
 
 // GET /api/tracking/buscar?cpk=XXX or ?carnet=XXX or ?q=XXX (smart search)
-// When no local results found, automatically searches SolvedCargo
+// ALWAYS queries SolvedCargo for fresh data, then merges with local DB
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -57,7 +57,6 @@ export async function GET(request: NextRequest) {
       }
       // Check if it looks like a CPK number (digits only, 4-8 digits)
       else if (/^\d{1,8}$/.test(digitsOnly)) {
-        // Could be partial CPK number - search by contains
         searchCPK = trimmed;
       }
       // Ambiguous: 8-9 digits - try BOTH CPK and carnet
@@ -94,19 +93,15 @@ export async function GET(request: NextRequest) {
       // If no exact match and searchCPK is just digits (partial), try contains search
       if (results.length === 0 && /^\d+$/.test(searchCPK.trim())) {
         const digits = searchCPK.trim();
-        // Pad to 7 digits for searching
         const paddedDigits = digits.padStart(7, '0');
         const containsResults = await db.trackingEntry.findMany({
-          where: {
-            cpk: { contains: paddedDigits },
-          },
+          where: { cpk: { contains: paddedDigits } },
           orderBy: { createdAt: 'desc' },
         });
         for (const r of containsResults) {
           if (!seenIds.has(r.id)) { results.push(r); seenIds.add(r.id); }
         }
 
-        // Also try with various CPK formats
         if (results.length === 0) {
           const allEntries = await db.trackingEntry.findMany({
             orderBy: { createdAt: 'desc' },
@@ -126,7 +121,6 @@ export async function GET(request: NextRequest) {
     if (searchCarnet) {
       const normalizedCarnet = searchCarnet.replace(/[^0-9]/g, '');
 
-      // Search in TrackingEntry.carnetPrincipal
       const trackingResults = await db.trackingEntry.findMany({
         orderBy: { createdAt: 'desc' },
       });
@@ -140,7 +134,7 @@ export async function GET(request: NextRequest) {
         if (!seenIds.has(r.id)) { results.push(r); seenIds.add(r.id); }
       }
 
-      // Also search in Pedido.carnetDestinatario using digit-only comparison
+      // Also search in Pedido.carnetDestinatario
       const allPedidos = await db.pedido.findMany({
         orderBy: { createdAt: 'desc' },
       });
@@ -151,7 +145,6 @@ export async function GET(request: NextRequest) {
         return pCarnet.includes(normalizedCarnet) || normalizedCarnet.includes(pCarnet);
       });
 
-      // Add pedidos as tracking-style results
       for (const p of carnetPedidos) {
         const alreadyExists = results.some(r => r.cpk === `PED-${p.id}`);
         if (!alreadyExists) {
@@ -173,49 +166,87 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================
-    // AUTO-SEARCH IN SOLVEDCARGO when no local results
+    // ALWAYS search SolvedCargo for FRESH data
+    // This ensures the client always sees the latest status
     // ============================================
     let solvedcargoSource = false;
-    if (results.length === 0 && !noSolvedCargo) {
+    let estadoUpdated = false;
+
+    if (!noSolvedCargo) {
       const searchQuery = q || searchCPK || searchCarnet || '';
-      const scResult = await searchSolvedCargo(searchQuery);
+      try {
+        const scResult = await searchSolvedCargo(searchQuery);
 
-      if (scResult.found && scResult.results.length > 0) {
-        solvedcargoSource = true;
+        if (scResult.found && scResult.results.length > 0) {
+          solvedcargoSource = true;
 
-        // Save found results to local DB for future searches
-        for (const scItem of scResult.results) {
-          try {
+          // Build a map of CPK -> fresh SolvedCargo data
+          const scMap = new Map<string, any>();
+          for (const scItem of scResult.results) {
             const cpkNorm = normalizarCPK(scItem.cpk);
             const estado = mapEstado(scItem.estado || '');
+            scMap.set(cpkNorm, { ...scItem, estado });
+          }
 
-            const existing = await db.trackingEntry.findFirst({ where: { cpk: cpkNorm } });
+          // Update existing local results with fresh SolvedCargo data
+          for (let i = 0; i < results.length; i++) {
+            const entry = results[i];
+            if (!entry.cpk || entry.cpk.startsWith('PED-')) continue; // Skip pedidos
 
-            if (existing) {
-              await db.trackingEntry.update({
-                where: { id: existing.id },
-                data: {
-                  fecha: scItem.fecha || existing.fecha,
-                  estado: estado || existing.estado,
-                  descripcion: scItem.descripcion || existing.descripcion,
-                  embarcador: scItem.embarcador || existing.embarcador,
-                  consignatario: scItem.consignatario || existing.consignatario,
-                  carnetPrincipal: scItem.carnetPrincipal || existing.carnetPrincipal,
-                },
-              });
-              // Add the existing (now updated) entry
-              const updated = await db.trackingEntry.findUnique({ where: { id: existing.id } });
-              if (updated && !seenIds.has(updated.id)) {
-                results.push({ ...updated, _source: 'solvedcargo', _isNew: false });
-                seenIds.add(updated.id);
+            const cpkNorm = normalizarCPK(entry.cpk);
+            const freshData = scMap.get(cpkNorm);
+
+            if (freshData) {
+              const newEstado = freshData.estado || 'EN AGENCIA';
+
+              // Only update DB if the estado actually changed
+              if (entry.estado !== newEstado) {
+                estadoUpdated = true;
+                console.log(`[Tracking] Estado actualizado: ${entry.cpk} "${entry.estado}" -> "${newEstado}"`);
+
+                try {
+                  await db.trackingEntry.updateMany({
+                    where: { cpk: cpkNorm },
+                    data: {
+                      fecha: freshData.fecha || entry.fecha,
+                      estado: newEstado,
+                      descripcion: freshData.descripcion || entry.descripcion,
+                      embarcador: freshData.embarcador || entry.embarcador,
+                      consignatario: freshData.consignatario || entry.consignatario,
+                      carnetPrincipal: freshData.carnetPrincipal || entry.carnetPrincipal,
+                      updatedAt: new Date(),
+                    },
+                  });
+                } catch (updateErr) {
+                  console.error('[Tracking] Error actualizando estado en BD:', updateErr);
+                }
+
+                // Update the result object with fresh data
+                results[i] = {
+                  ...entry,
+                  estado: newEstado,
+                  fecha: freshData.fecha || entry.fecha,
+                  descripcion: freshData.descripcion || entry.descripcion,
+                  embarcador: freshData.embarcador || entry.embarcador,
+                  consignatario: freshData.consignatario || entry.consignatario,
+                  carnetPrincipal: freshData.carnetPrincipal || entry.carnetPrincipal,
+                  _source: 'solvedcargo',
+                  _estadoUpdated: true,
+                };
               }
-            } else {
-              // Create new entry
+
+              scMap.delete(cpkNorm); // Mark as processed
+            }
+          }
+
+          // Add any NEW results from SolvedCargo that weren't in local DB
+          for (const [cpkNorm, scItem] of scMap) {
+            try {
               const created = await db.trackingEntry.create({
                 data: {
                   cpk: cpkNorm,
                   fecha: scItem.fecha,
-                  estado: estado || 'EN AGENCIA',
+                  estado: scItem.estado || 'EN AGENCIA',
                   descripcion: scItem.descripcion,
                   embarcador: scItem.embarcador,
                   consignatario: scItem.consignatario,
@@ -224,13 +255,15 @@ export async function GET(request: NextRequest) {
                 },
               });
               results.push({ ...created, _source: 'solvedcargo', _isNew: true });
+            } catch (saveError) {
+              console.error('[Tracking] Error guardando nuevo resultado de SolvedCargo:', saveError);
+              results.push({ ...scItem, id: Date.now(), _source: 'solvedcargo', _isNew: true });
             }
-          } catch (saveError) {
-            console.error('Error saving SolvedCargo result to local DB:', saveError);
-            // Add as unsaved result
-            results.push({ ...scItem, id: Date.now(), _source: 'solvedcargo', _isNew: true });
           }
         }
+      } catch (scError) {
+        // SolvedCargo might be down - return local data gracefully
+        console.error('[Tracking] Error consultando SolvedCargo, se muestran datos locales:', scError);
       }
     }
 
@@ -250,6 +283,7 @@ export async function GET(request: NextRequest) {
       data: results,
       meta: {
         solvedcargoSource,
+        estadoUpdated,
         solvedcargoResults: results.filter(r => r._source === 'solvedcargo').length,
         totalResults: results.length,
       },
