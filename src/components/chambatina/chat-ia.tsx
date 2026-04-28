@@ -94,6 +94,13 @@ export function ChatIA() {
   };
 
   return (
+    <>
+      {/* Force chat input text to always be visible - overrides ThemeInjector !important */}
+      <style>{`
+        .ch-chat-input { color: #18181b !important; background-color: #ffffff !important; }
+        .ch-chat-input::placeholder { color: #a1a1aa !important; }
+        .ch-chat-input:disabled { opacity: 0.6 !important; }
+      `}</style>
     <div
       className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-20 flex flex-col"
       style={{ height: 'calc(100dvh - 64px - 64px)', minHeight: '400px' }}
@@ -199,7 +206,8 @@ export function ChatIA() {
               placeholder="Escribe tu pregunta..."
               disabled={loading}
               autoFocus
-              className="flex-1 h-10 px-3 rounded-lg border border-zinc-300 bg-white text-zinc-900 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ch-chat-input flex-1 h-10 px-3 rounded-lg border border-zinc-300 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              style={{ color: '#18181b', backgroundColor: '#ffffff' }}
             />
             <Button
               type="submit"
@@ -216,5 +224,6 @@ export function ChatIA() {
         </div>
       </Card>
     </div>
+    </>
   );
 }
