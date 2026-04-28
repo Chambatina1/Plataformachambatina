@@ -137,3 +137,28 @@ Stage Summary:
 - Key bug fixes: TSV parser field assignment, buscar API estado matching, chat API config reading
 - Build passes cleanly, all 12 API routes operational
 - System is ready for deployment
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix chat input text invisible - nuclear approach with ID selector + CSSOM
+
+Work Log:
+- Read ThemeInjector (in page.tsx) to understand CSS injection mechanism
+- ThemeInjector fetches /api/config and generates CSS overrides for theme colors targeting `.ch-public` classes
+- Also loads `custom_css` from config if set
+- The layout uses next-themes ThemeProvider with `defaultTheme="system"` - dark mode CSS vars set light foreground on dark background
+- Previous 3 fix attempts used class selectors (.ch-chat-input) which could be beaten by dark mode inheritance or other CSS rules
+- Nuclear fix applied:
+  1. Chat input now has unique `id="ch-chat-msg-input"` for maximum CSS specificity
+  2. page.tsx uses `#ch-chat-msg-input` selector with `!important` for all visual properties
+  3. Chat component uses `useCallback` + `useEffect` to imperatively set styles via CSSOM API (`el.style.setProperty('color', '#18181b', 'important')`)
+  4. MutationObserver watches for style/class attribute changes and re-applies forced styles
+  5. All text colors in chat (messages, headers, bubbles) use inline `style={{ color: '#...' }}` instead of Tailwind classes
+  6. Background colors explicitly set via inline styles instead of Tailwind bg- classes
+- Build passes, pushed to GitHub, deployed to Render (HTTP 202)
+
+Stage Summary:
+- Chat input text visibility fixed with triple-redundancy approach: ID-based CSS !important + CSSOM imperative styles + MutationObserver
+- All chat text colors now use inline styles to bypass any CSS framework issues
+- Deployed to Render, pending build completion
