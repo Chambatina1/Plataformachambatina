@@ -43,7 +43,8 @@ export default function GlobalError({
           </p>
           <button
             onClick={() => {
-              try { localStorage.clear(); } catch {}
+              // Only clear error logs, NOT Zustand persist data (login session)
+              try { localStorage.removeItem('chambatina-error'); } catch {}
               reset();
             }}
             style={{

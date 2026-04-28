@@ -188,17 +188,8 @@ export default function Page() {
   const [hasError, setHasError] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Show login gate if no user is logged in and not in admin mode
-  if (!currentUser && mode !== 'admin') {
-    return (
-      <>
-        <ThemeInjector />
-        <LoginGate />
-      </>
-    );
-  }
-
   // Handle ?comprar=ID query param to auto-open purchase form
+  // MUST be called before any conditional return (React hooks rule)
   useEffect(() => {
     function checkComprarParam() {
       const params = new URLSearchParams(window.location.search);
@@ -258,6 +249,17 @@ export default function Page() {
     }
   }, [mode, currentView, adminView]);
 
+  // Show login gate if no user is logged in and not in admin mode
+  // Placed AFTER all hooks to maintain consistent hook count across renders
+  if (!currentUser && mode !== 'admin') {
+    return (
+      <>
+        <ThemeInjector />
+        <LoginGate />
+      </>
+    );
+  }
+
   if (hasError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -268,7 +270,8 @@ export default function Page() {
           <p className="text-xs text-zinc-400 mb-6">Esto puede deberse a datos temporales corruptos.</p>
           <button
             onClick={() => {
-              try { localStorage.clear(); } catch {}
+              // Only clear error logs, NOT Zustand persist data (login session)
+              try { localStorage.removeItem('chambatina-error'); } catch {}
               window.location.reload();
             }}
             className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors"
