@@ -25,7 +25,11 @@ import {
   Users,
   UserPlus,
   Mail,
+  Code,
+  LayoutDashboard,
+  Bell,
 } from 'lucide-react';
+import { NotificationBell } from './Notificaciones';
 
 // ---- PUBLIC NAV ----
 
@@ -33,8 +37,10 @@ const publicNavItems: { view: PublicView; label: string; icon: typeof Home }[] =
   { view: 'home', label: 'Inicio', icon: Home },
   { view: 'tienda', label: 'Tienda', icon: ShoppingBag },
   { view: 'servicios', label: 'Servicios', icon: Handshake },
+  { view: 'servicios-digitales', label: 'Digitales', icon: Code },
   { view: 'rastreador', label: 'Rastreador', icon: Search },
   { view: 'chat', label: 'Chat IA', icon: MessageCircle },
+  { view: 'dashboard-cliente', label: 'Mi Panel', icon: LayoutDashboard },
 ];
 
 function PublicNavbar() {
@@ -113,6 +119,7 @@ function PublicNavbar() {
               })}
               {currentUser ? (
                 <div className="ml-2 flex items-center gap-2">
+                  <NotificationBell />
                   <span className="text-sm text-zinc-500 hidden lg:inline">
                     {currentUser.nombre}
                   </span>
@@ -182,13 +189,22 @@ function PublicNavbar() {
                   </nav>
                   <div className="p-2 border-t border-zinc-100 space-y-1">
                     {currentUser && (
-                      <button
+                      <>
+                        <button
+                          onClick={() => { setCurrentView('notificaciones'); setSheetOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-zinc-500 hover:bg-zinc-50 transition-all duration-200"
+                        >
+                          <Bell className="h-5 w-5" />
+                          Notificaciones
+                        </button>
+                        <button
                         onClick={() => { handleUserLogout(); setSheetOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-all duration-200"
                       >
                         <LogOut className="h-5 w-5" />
                         Cerrar Sesion ({currentUser.nombre})
                       </button>
+                        </>
                     )}
                     <button
                       onClick={() => { goToAdmin(); setSheetOpen(false); }}

@@ -23,6 +23,9 @@ import { AITrainingPanel } from '@/components/chambatina/ai-training-panel';
 import { AparienciaPanel } from '@/components/chambatina/apariencia-panel';
 import { UsersPanel } from '@/components/chambatina/users-panel';
 import { Servicios } from '@/components/chambatina/servicios';
+import ServiciosDigitales from '@/components/chambatina/ServiciosDigitales';
+import DashboardCliente from '@/components/chambatina/DashboardCliente';
+import Notificaciones, { NotificationBell } from '@/components/chambatina/Notificaciones';
 import { WhatsAppFloat, TikTokFloat } from '@/components/chambatina/marketing';
 import { WelcomePopup } from '@/components/chambatina/welcome-popup';
 import { EmailLeadsPanel } from '@/components/chambatina/email-leads-panel';
@@ -277,6 +280,9 @@ export default function Page() {
         case 'rastreador': return <Rastreador />;
         case 'chat': return <ChatIA />;
         case 'servicios': return <Servicios />;
+        case 'servicios-digitales': return <ServiciosDigitales />;
+        case 'dashboard-cliente': return <DashboardCliente />;
+        case 'notificaciones': return <Notificaciones />;
         case 'pedido-public': return <PedidoForm />;
         default: return <Home />;
       }
