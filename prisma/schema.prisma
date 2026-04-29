@@ -134,6 +134,7 @@ model User {
   visits       UserVisit[]
   presence     OnlinePresence[]
   services     ServiceListing[]
+  notifications Notification[]
 }
 
 model Referral {
@@ -230,4 +231,36 @@ model OnlinePresence {
   @@unique([sessionId])
   @@index([userId])
   @@index([lastSeen])
+}
+
+model WebService {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String   @default("web")
+  price       Float?
+  image       String?
+  tech        String?
+  url         String?
+  featured    Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      Int?
+  type        String   @default("status")
+  title       String
+  message     String
+  pedidoId    Int?
+  cpk         String?
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
 }
