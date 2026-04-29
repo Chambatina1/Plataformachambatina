@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // "standalone" es ignorado por Vercel (Vercel tiene su propio build)
-  // Se mantiene para compatibilidad si se despliega en un VPS propio
-  output: "standalone",
+  // Output estándar para Render (usa npx next start)
   typescript: {
     ignoreBuildErrors: true,
   },
