@@ -67,6 +67,18 @@ export async function GET(request: NextRequest) {
     for (const k of allKeys) {
       entries[k] = await getOrCreate(k);
     }
+    // Fallback: if SMTP fields are empty in DB but exist in env vars, use env vars
+    const smtpKeys = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'EMAIL_FROM'];
+    for (const k of smtpKeys) {
+      if (!entries[k] && process.env[k]) {
+        // Don't expose the full password from env, just a marker so UI knows it's configured
+        if (k === 'SMTP_PASS') {
+          entries[k] = 'configured-via-env';
+        } else {
+          entries[k] = process.env[k]!;
+        }
+      }
+    }
     return NextResponse.json({ ok: true, data: entries });
   } catch (error) {
     console.error('Error fetching config:', error);
