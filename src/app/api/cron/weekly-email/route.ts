@@ -57,10 +57,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, message: 'Ningun usuario tiene CPKs rastreando', sent: 0 });
     }
 
-    const users = await db.user.findMany({
+    const allUsers = await db.user.findMany({
       where: { id: { in: userIdsWithTracking }, isActive: true },
       select: { id: true, nombre: true, email: true },
-    }).filter(u => u.email && u.email.length > 0);
+    });
+    const users = allUsers.filter(u => u.email && u.email.length > 0);
 
     if (users.length === 0) {
       return NextResponse.json({ ok: true, message: 'No hay usuarios activos con CPKs rastreando', sent: 0 });
