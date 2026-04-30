@@ -284,6 +284,37 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // ============================================
+    // AUTO-SUBSCRIBE: Save searched CPKs for user
+    // If x-user-id header is present, automatically
+    // track these CPKs so weekly email is personalized
+    // ============================================
+    const userIdHeader = request.headers.get('x-user-id');
+    if (userIdHeader) {
+      const userId = parseInt(userIdHeader, 10);
+      if (!isNaN(userId)) {
+        const cpksToTrack = results
+          .filter(r => r.cpk && !r.cpk.startsWith('PED-'))
+          .map(r => normalizarCPK(r.cpk));
+        const uniqueCPKs = [...new Set(cpksToTrack)];
+
+        for (const cpk of uniqueCPKs) {
+          try {
+            await db.userTrackingSearch.upsert({
+              where: { userId_cpk: { userId, cpk } },
+              update: {}, // No-op if already exists
+              create: { userId, cpk },
+            });
+          } catch (trackErr) {
+            console.error(`[Tracking] Error guardando seguimiento CPK ${cpk} para usuario ${userId}:`, trackErr);
+          }
+        }
+        if (uniqueCPKs.length > 0) {
+          console.log(`[Tracking] Auto-suscrito usuario ${userId} a ${uniqueCPKs.length} CPK(s)`);
+        }
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       data: results,

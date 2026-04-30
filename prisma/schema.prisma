@@ -131,9 +131,10 @@ model User {
   referredByReferrals Referral[] @relation("Referred")
   testimonios  Testimonio[]
   EmailLog     EmailLog[]
-  visits       UserVisit[]
-  presence     OnlinePresence[]
-  services     ServiceListing[]
+  visits            UserVisit[]
+  presence          OnlinePresence[]
+  services          ServiceListing[]
+  trackingSearches  UserTrackingSearch[]
 }
 
 model Referral {
@@ -245,6 +246,19 @@ model InternalMessage {
   @@index([receiverId])
   @@index([isRead])
   @@index([createdAt])
+}
+
+model UserTrackingSearch {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  cpk       String
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cpk])
+  @@index([userId])
+  @@index([cpk])
 }
 
 model OnlinePresence {

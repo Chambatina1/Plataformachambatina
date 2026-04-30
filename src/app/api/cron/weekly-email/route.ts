@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { normalizarCPK } from '@/lib/chambatina';
 
 // GET /api/cron/weekly-email
-// This endpoint auto-sends weekly tracking emails to all users.
-// It checks a "last sent" timestamp in the Config table — only sends
-// if at least 7 days have passed since the last send.
-// Render's health check hits / every 30s, so we piggyback on traffic.
-// Alternatively, call it manually: GET /api/cron/weekly-email?secret=CHAMBA_WEEKLY_2024
+// Sends personalized weekly tracking emails to all users.
+// - Users with tracked CPKs (UserTrackingSearch) get a PERSONALIZED email
+//   with only the status of THEIR packages.
+// - Users with no tracked CPKs get the GENERAL summary (all SolvedCargo stats).
+// Call manually: GET /api/cron/weekly-email?secret=CHAMBA_WEEKLY_2024
 // Or set up a FREE external cron (cron-job.org, EasyCron) to hit this URL weekly.
 
 export const dynamic = 'force-dynamic';
@@ -17,9 +18,6 @@ export async function GET(req: Request) {
   const manualSecret = url.searchParams.get('secret');
   const isManualCall = manualSecret === 'CHAMBA_WEEKLY_2024';
 
-  // Safety: only allow auto-trigger via specific query param or secret
-  // On Render free tier, the app sleeps after inactivity.
-  // We use a lightweight ping mechanism: any request to / triggers this check.
   if (!isManualCall) {
     return NextResponse.json({ ok: false, error: 'Usa ?secret=CHAMBA_WEEKLY_2024' }, { status: 403 });
   }
@@ -41,7 +39,7 @@ export async function GET(req: Request) {
       });
     }
 
-    // 2. Get all users with emails
+    // 2. Get all active users with emails
     const users = await db.user.findMany({
       where: { email: { not: null }, isActive: true },
       select: { id: true, nombre: true, email: true },
@@ -51,7 +49,21 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, message: 'No hay usuarios registrados', sent: 0 });
     }
 
-    // 3. Get SolvedCargo data
+    // 3. Get ALL tracked CPKs per user (from UserTrackingSearch)
+    const allTrackingSearches = await db.userTrackingSearch.findMany({
+      select: { userId: true, cpk: true },
+    });
+
+    // Build userId -> Set<cpk> map
+    const userTrackedCPKs = new Map<number, Set<string>>();
+    for (const ts of allTrackingSearches) {
+      if (!userTrackedCPKs.has(ts.userId)) {
+        userTrackedCPKs.set(ts.userId, new Set());
+      }
+      userTrackedCPKs.get(ts.userId)!.add(ts.cpk);
+    }
+
+    // 4. Get SolvedCargo data (once for all users)
     let solvedCargoResults: any[] = [];
     let solvedCargoError: string | null = null;
 
@@ -68,14 +80,20 @@ export async function GET(req: Request) {
       solvedCargoError = scErr.message || 'Error al consultar SolvedCargo';
     }
 
-    // 4. Build status summary
+    // Normalize CPKs in SolvedCargo results for matching
+    const normalizedSC = solvedCargoResults.map(r => ({
+      ...r,
+      cpkNorm: normalizarCPK(r.cpk),
+    }));
+
+    // Build global status summary (for generic emails)
     const estadoCount: Record<string, number> = {};
-    solvedCargoResults.forEach((r: any) => {
+    normalizedSC.forEach((r: any) => {
       const estado = r.estado || 'EN AGENCIA';
       estadoCount[estado] = (estadoCount[estado] || 0) + 1;
     });
 
-    const totalPackages = solvedCargoResults.length;
+    const totalPackages = normalizedSC.length;
     const entregados = estadoCount['ENTREGADO'] || 0;
     const enTransito = (estadoCount['EN TRANSITO'] || 0) + (estadoCount['TRASLADO PROVINCIA'] || 0);
 
@@ -88,21 +106,117 @@ export async function GET(req: Request) {
         </tr>
       `).join('');
 
-    // 5. Build email HTML
+    // 5. Build email HTML templates
     const today = new Date().toLocaleDateString('es-US', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
     const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://plataformachambatina.onrender.com';
 
-    const buildHtml = (nombre: string) => `
+    // Email header + footer wrapper
+    const emailWrapper = (title: string, body: string) => `
 <!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <div style="max-width:600px;margin:0 auto;padding:20px;">
   <div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:30px;border-radius:16px 16px 0 0;text-align:center;">
     <h1 style="margin:0;color:white;font-size:24px;font-weight:800;">CHAMBATINA</h1>
-    <p style="margin:8px 0 0;color:#fef3c7;font-size:14px;">Reporte Semanal de Envios</p>
+    <p style="margin:8px 0 0;color:#fef3c7;font-size:14px;">${title}</p>
   </div>
   <div style="background:white;padding:30px;border-radius:0 0 16px 16px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+    ${body}
+    <div style="text-align:center;padding:20px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-radius:12px;margin-top:24px;">
+      <p style="margin:0 0 12px;color:#92400e;font-size:14px;">Para ver el detalle de tu envio, visita nuestro rastreador:</p>
+      <a href="${siteUrl}" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Rastrear mi Paquete</a>
+    </div>
+  </div>
+  <div style="text-align:center;padding:20px;color:#9ca3af;font-size:12px;">
+    <p style="margin:0;">Chambatina - Envios Internacionales</p>
+    <p style="margin:4px 0 0;">Este reporte se envia automaticamente cada semana.</p>
+  </div>
+</div>
+</body></html>`;
+
+    // Build personalized email for a user with their tracked CPKs
+    const buildPersonalizedHtml = (nombre: string, userCPKs: string[]) => {
+      const cpkNormSet = new Set(userCPKs.map(c => normalizarCPK(c)));
+
+      // Filter SolvedCargo results for this user's CPKs
+      const userPackages = normalizedSC.filter(r => cpkNormSet.has(r.cpkNorm));
+
+      // Also check local DB for any additional entries
+      const userEstadoCount: Record<string, number> = {};
+      const userPackageList = userPackages.map(r => {
+        const estado = r.estado || 'EN AGENCIA';
+        userEstadoCount[estado] = (userEstadoCount[estado] || 0) + 1;
+        return r;
+      });
+
+      const userTotal = userPackageList.length;
+      const userEntregados = userEstadoCount['ENTREGADO'] || 0;
+      const userEnCamino = (userEstadoCount['EN TRANSITO'] || 0) + (userEstadoCount['TRASLADO PROVINCIA'] || 0);
+      const userEnAgencia = userEstadoCount['EN AGENCIA'] || 0;
+
+      // Color for estado badge
+      const estadoColor = (estado: string) => {
+        const upper = estado.toUpperCase().trim();
+        if (upper.includes('ENTREGADO')) return '#166534';
+        if (upper.includes('TRANSITO') || upper.includes('TRASLADO') || upper.includes('TRANSPORTE')) return '#1e40af';
+        if (upper.includes('ADUANA')) return '#7c2d12';
+        return '#92400e';
+      };
+
+      const body = `
+    <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">
+      Hola, <strong>${nombre}</strong>! Aqui tienes el resumen semanal de <strong>${userTotal} paquete(s)</strong> que estas rastreando.
+    </p>
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px;margin-bottom:24px;">
+      <p style="margin:0 0 4px;font-size:12px;color:#92400e;font-weight:600;">FECHA DEL REPORTE</p>
+      <p style="margin:0;font-size:16px;color:#78350f;font-weight:700;">${today}</p>
+    </div>
+    ${solvedCargoError ? `
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px;margin-bottom:24px;">
+        <p style="margin:0;color:#991b1b;font-size:14px;"><strong>Aviso:</strong> No se pudieron obtener datos frescos de SolvedCargo (${solvedCargoError}). Mostrando datos locales.</p>
+      </div>
+    ` : ''}
+    ${userTotal > 0 ? `
+      <div style="display:flex;gap:12px;margin-bottom:24px;">
+        <div style="flex:1;background:#f0fdf4;border-radius:12px;padding:16px;text-align:center;">
+          <p style="margin:0;font-size:28px;font-weight:800;color:#166534;">${userTotal}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:#166534;font-weight:500;">Mis Paquetes</p>
+        </div>
+        <div style="flex:1;background:#f0fdf4;border-radius:12px;padding:16px;text-align:center;">
+          <p style="margin:0;font-size:28px;font-weight:800;color:#166534;">${userEntregados}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:#166534;font-weight:500;">Entregados</p>
+        </div>
+        <div style="flex:1;background:#eff6ff;border-radius:12px;padding:16px;text-align:center;">
+          <p style="margin:0;font-size:28px;font-weight:800;color:#1e40af;">${userEnCamino}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:#1e40af;font-weight:500;">En Camino</p>
+        </div>
+      </div>
+      <h3 style="margin:0 0 12px;font-size:16px;color:#18181b;font-weight:700;">Detalle de tus Envios</h3>
+      ${userPackageList.map(pkg => `
+        <div style="border:1px solid #f3f4f6;border-radius:12px;padding:14px;margin-bottom:10px;background:#fafafa;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-weight:700;color:#18181b;font-size:14px;">${pkg.cpk}</span>
+            <span style="background:${estadoColor(pkg.estado)};color:white;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;">${pkg.estado}</span>
+          </div>
+          ${pkg.consignatario ? `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Destinatario: <strong>${pkg.consignatario}</strong></p>` : ''}
+          ${pkg.descripcion ? `<p style="margin:0 0 4px;font-size:12px;color:#6b7280;">${pkg.descripcion}</p>` : ''}
+          ${pkg.fecha ? `<p style="margin:0;font-size:11px;color:#9ca3af;">Fecha: ${pkg.fecha}</p>` : ''}
+        </div>
+      `).join('')}
+    ` : `
+      <div style="text-align:center;padding:24px;background:#f9fafb;border-radius:12px;margin-bottom:24px;">
+        <p style="margin:0 0 8px;color:#6b7280;font-size:14px;">No encontramos movimientos en los CPKs que rastreas.</p>
+        <p style="margin:0;font-size:12px;color:#9ca3af;">Usa el rastreador para buscar tus paquetes y te notificaremos automaticamente.</p>
+      </div>
+    `}`;
+
+      return emailWrapper('Tu Reporte Personalizado de Envios', body);
+    };
+
+    // Build generic email (for users with no tracked CPKs)
+    const buildGenericHtml = (nombre: string) => {
+      const body = `
     <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">
       Hola, <strong>${nombre}</strong>! Aqui tienes el resumen semanal del estado de los envios en SolvedCargo.
     </p>
@@ -143,21 +257,15 @@ export async function GET(req: Request) {
           <p style="margin:0;color:#6b7280;font-size:14px;">No hay envios activos en este momento.</p>
         </div>
       `}
-    `}
-    <div style="text-align:center;padding:20px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-radius:12px;">
-      <p style="margin:0 0 12px;color:#92400e;font-size:14px;">Para ver el detalle de tu envio, visita nuestro rastreador:</p>
-      <a href="${siteUrl}" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Rastrear mi Paquete</a>
-    </div>
-  </div>
-  <div style="text-align:center;padding:20px;color:#9ca3af;font-size:12px;">
-    <p style="margin:0;">Chambatina - Envios Internacionales</p>
-    <p style="margin:4px 0 0;">Este reporte se envia automaticamente cada semana.</p>
-  </div>
-</div>
-</body></html>`;
+    `}`;
+
+      return emailWrapper('Reporte Semanal de Envios', body);
+    };
 
     // 6. Email sending — try Resend first, then SMTP
     let sent = 0;
+    let sentPersonalized = 0;
+    let sentGeneric = 0;
     let failed = 0;
     const errors: string[] = [];
     const emailFrom = process.env.EMAIL_FROM || 'Chambatina <geochambatina@gmail.com>';
@@ -182,7 +290,6 @@ export async function GET(req: Request) {
       const { Resend } = await import('resend');
       const resend = new Resend(resendApiKey);
 
-      // ALWAYS use Resend onboarding domain — custom domains need verification
       let displayName = 'Chambatina';
       if (emailFrom) {
         const match = emailFrom.match(/^(.+?)\s*<.*>$/);
@@ -197,23 +304,51 @@ export async function GET(req: Request) {
 
       for (const u of users) {
         if (!u.email) continue;
+
+        // Check if user has personalized CPKs
+        const trackedCPKs = userTrackedCPKs.get(u.id);
+        const isPersonalized = trackedCPKs && trackedCPKs.size > 0;
+
+        const subject = isPersonalized
+          ? `Tu Reporte de Envios - Chambatina (${today})`
+          : `Reporte Semanal de Envios - Chambatina (${today})`;
+
+        const html = isPersonalized
+          ? buildPersonalizedHtml(u.nombre || 'Cliente', [...trackedCPKs!])
+          : buildGenericHtml(u.nombre || 'Cliente');
+
         try {
           const { error } = await resend.emails.send({
             from: resendFrom,
             to: u.email,
-            subject: `Reporte Semanal de Envios - Chambatina (${today})`,
-            html: buildHtml(u.nombre || 'Cliente'),
+            subject,
+            html,
           });
           if (error) throw new Error(error.message);
           sent++;
+          if (isPersonalized) sentPersonalized++;
+          else sentGeneric++;
           await db.emailLog.create({
-            data: { userId: u.id, userEmail: u.email, asunto: 'Reporte Semanal - Chambatina', tipo: 'weekly-tracking', estado: 'enviado' },
+            data: {
+              userId: u.id,
+              userEmail: u.email,
+              asunto: subject,
+              tipo: isPersonalized ? 'weekly-personalized' : 'weekly-tracking',
+              estado: 'enviado',
+            },
           });
         } catch (err: any) {
           failed++;
           errors.push(`${u.email}: ${err.message}`);
           await db.emailLog.create({
-            data: { userId: u.id, userEmail: u.email, asunto: 'Reporte Semanal - Chambatina', tipo: 'weekly-tracking', estado: 'fallido', error: err.message },
+            data: {
+              userId: u.id,
+              userEmail: u.email,
+              asunto: subject,
+              tipo: isPersonalized ? 'weekly-personalized' : 'weekly-tracking',
+              estado: 'fallido',
+              error: err.message,
+            },
           });
         }
         await new Promise(r => setTimeout(r, 500));
@@ -227,22 +362,49 @@ export async function GET(req: Request) {
 
       for (const u of users) {
         if (!u.email) continue;
+
+        const trackedCPKs = userTrackedCPKs.get(u.id);
+        const isPersonalized = trackedCPKs && trackedCPKs.size > 0;
+
+        const subject = isPersonalized
+          ? `Tu Reporte de Envios - Chambatina (${today})`
+          : `Reporte Semanal de Envios - Chambatina (${today})`;
+
+        const html = isPersonalized
+          ? buildPersonalizedHtml(u.nombre || 'Cliente', [...trackedCPKs!])
+          : buildGenericHtml(u.nombre || 'Cliente');
+
         try {
           await transporter.sendMail({
             from: emailFrom,
             to: u.email,
-            subject: `Reporte Semanal de Envios - Chambatina (${today})`,
-            html: buildHtml(u.nombre || 'Cliente'),
+            subject,
+            html,
           });
           sent++;
+          if (isPersonalized) sentPersonalized++;
+          else sentGeneric++;
           await db.emailLog.create({
-            data: { userId: u.id, userEmail: u.email, asunto: 'Reporte Semanal de Envios - Chambatina', tipo: 'weekly-tracking', estado: 'enviado' },
+            data: {
+              userId: u.id,
+              userEmail: u.email,
+              asunto: subject,
+              tipo: isPersonalized ? 'weekly-personalized' : 'weekly-tracking',
+              estado: 'enviado',
+            },
           });
         } catch (err: any) {
           failed++;
           errors.push(`${u.email}: ${err.message}`);
           await db.emailLog.create({
-            data: { userId: u.id, userEmail: u.email, asunto: 'Reporte Semanal - Chambatina', tipo: 'weekly-tracking', estado: 'fallido', error: err.message },
+            data: {
+              userId: u.id,
+              userEmail: u.email,
+              asunto: subject,
+              tipo: isPersonalized ? 'weekly-personalized' : 'weekly-tracking',
+              estado: 'fallido',
+              error: err.message,
+            },
           });
         }
         await new Promise(r => setTimeout(r, 500));
@@ -263,7 +425,10 @@ export async function GET(req: Request) {
       message: 'Reporte semanal procesado',
       totalUsers: users.length,
       sent,
+      sentPersonalized,
+      sentGeneric,
       failed,
+      usersWithTracking: userTrackedCPKs.size,
       totalPackages,
       entregados,
       enTransito,
