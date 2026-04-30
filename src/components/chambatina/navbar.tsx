@@ -25,6 +25,7 @@ import {
   Users,
   UserPlus,
   Mail,
+  Sparkles,
 } from 'lucide-react';
 
 // ---- PUBLIC NAV ----
@@ -35,6 +36,7 @@ const publicNavItems: { view: PublicView; label: string; icon: typeof Home }[] =
   { view: 'servicios', label: 'Servicios', icon: Handshake },
   { view: 'rastreador', label: 'Rastreador', icon: Search },
   { view: 'chat', label: 'Chat IA', icon: MessageCircle },
+  { view: 'servicios-digitales', label: 'Digitales', icon: Sparkles },
 ];
 
 function PublicNavbar() {
@@ -251,6 +253,7 @@ const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3 }[
   { view: 'apariencia', label: 'Apariencia', icon: Palette },
   { view: 'users', label: 'Usuarios', icon: Users },
   { view: 'leads', label: 'Leads', icon: Mail },
+  { view: 'servicios-digitales-admin', label: 'Digitales', icon: Sparkles },
   { view: 'config', label: 'Config', icon: Settings },
 ];
 

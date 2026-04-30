@@ -172,7 +172,7 @@ export function LoginGate() {
                           handleEmailSubmit(e);
                         }
                       }}
-                      className="pl-10 h-12 text-base"
+                      className="pl-10 h-12 text-base text-zinc-900"
                       disabled={loading}
                       autoFocus
                     />
@@ -226,7 +226,7 @@ export function LoginGate() {
                       placeholder="Tu nombre completo"
                       value={form.nombre}
                       onChange={updateField('nombre')}
-                      className="pl-10 h-12 text-base"
+                      className="pl-10 h-12 text-base text-zinc-900"
                       disabled={loading}
                       autoFocus
                     />
@@ -244,7 +244,7 @@ export function LoginGate() {
                       placeholder="+53 0000 0000"
                       value={form.telefono}
                       onChange={updateField('telefono')}
-                      className="pl-10 h-12 text-base"
+                      className="pl-10 h-12 text-base text-zinc-900"
                       disabled={loading}
                     />
                   </div>

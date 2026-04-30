@@ -74,7 +74,7 @@ export function LoginDialog() {
                 setPassword(e.target.value);
                 if (error) setError('');
               }}
-              className={`pl-10 ${error ? 'border-red-500' : ''}`}
+              className={`pl-10 text-zinc-900 ${error ? 'border-red-500' : ''}`}
               autoFocus
               disabled={loading}
             />

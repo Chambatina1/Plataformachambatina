@@ -217,6 +217,21 @@ model UserVisit {
   @@index([createdAt])
 }
 
+model DigitalService {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  precio      Float
+  precioAntes Float?
+  categoria   String   @default("general")
+  icono       String?
+  activo      Boolean  @default(true)
+  popular     Boolean  @default(false)
+  orden       Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+}
+
 model OnlinePresence {
   id        Int      @id @default(autoincrement())
   userId    Int

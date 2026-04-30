@@ -26,6 +26,8 @@ import { Servicios } from '@/components/chambatina/servicios';
 import { WhatsAppFloat, TikTokFloat } from '@/components/chambatina/marketing';
 import { WelcomePopup } from '@/components/chambatina/welcome-popup';
 import { EmailLeadsPanel } from '@/components/chambatina/email-leads-panel';
+import { ServiciosDigitales } from '@/components/chambatina/servicios-digitales';
+import { ServiciosDigitalesAdmin } from '@/components/chambatina/servicios-digitales-admin';
 import { Button } from '@/components/ui/button';
 
 // Error-safe component wrapper
@@ -278,6 +280,7 @@ export default function Page() {
         case 'chat': return <ChatIA />;
         case 'servicios': return <Servicios />;
         case 'pedido-public': return <PedidoForm />;
+        case 'servicios-digitales': return <ServiciosDigitales />;
         default: return <Home />;
       }
     } else {
@@ -296,6 +299,7 @@ export default function Page() {
         case 'emails': return <ConfigPanel />;
         case 'servicios-admin': return <Servicios />;
         case 'leads': return <EmailLeadsPanel />;
+        case 'servicios-digitales-admin': return <ServiciosDigitalesAdmin />;
         default: return <AdminDashboard />;
       }
     }
