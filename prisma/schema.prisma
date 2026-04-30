@@ -277,3 +277,16 @@ model OnlinePresence {
   @@index([userId])
   @@index([lastSeen])
 }
+
+model Resena {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  estrellas   Int      @default(5)
+  comentario  String
+  servicio    String?
+  activa      Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([activa])
+  @@index([createdAt])
+}

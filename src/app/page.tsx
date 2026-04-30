@@ -30,6 +30,7 @@ import { ServiciosDigitales } from '@/components/chambatina/servicios-digitales'
 import { ServiciosDigitalesAdmin } from '@/components/chambatina/servicios-digitales-admin';
 import { MessagesAdmin } from '@/components/chambatina/messages-admin';
 import { MessagesUser } from '@/components/chambatina/messages-user';
+import { Resenas } from '@/components/chambatina/resenas';
 import { Button } from '@/components/ui/button';
 
 // Error-safe component wrapper
@@ -262,13 +263,18 @@ export default function Page() {
           })
           .catch(() => {});
       }
+      // Handle ?resena=1 or ?resena=cliente&servicio=ENVIO to auto-open review form
+      const resenaParam = params.get('resena');
+      if (resenaParam || params.get('cliente') || params.get('servicio')) {
+        setCurrentView('resenas');
+      }
     }
     // Run on mount
     checkComprarParam();
     // Listen for URL changes (popstate)
     window.addEventListener('popstate', checkComprarParam);
     return () => window.removeEventListener('popstate', checkComprarParam);
-  }, [goToComprar]);
+  }, [goToComprar, setCurrentView]);
 
   const viewKey = mode === 'admin' ? `admin-${adminView}` : `public-${currentView}`;
 
@@ -284,6 +290,7 @@ export default function Page() {
         case 'pedido-public': return <PedidoForm />;
         case 'servicios-digitales': return <ServiciosDigitales />;
         case 'messages': return <MessagesUser />;
+        case 'resenas': return <Resenas />;
         default: return <Home />;
       }
     } else {
