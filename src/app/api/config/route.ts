@@ -10,7 +10,7 @@ const DEFAULTS: Record<string, string> = {
   nombre_contacto2: 'Adriana',
   telefono3: '',
   nombre_contacto3: '',
-  email: '',
+  email: 'geochambatina@gmail.com',
   horario: 'Lunes a Viernes 9:00 AM - 6:00 PM',
   whatsapp: '',
   instagram: '',
@@ -18,6 +18,16 @@ const DEFAULTS: Record<string, string> = {
   ai_provider: 'deepseek',
   ai_api_key: '',
   ai_model: '',
+  smtp_host: 'smtp.gmail.com',
+  smtp_port: '587',
+  smtp_user: '',
+  smtp_pass: '',
+  email_from: 'geochambatina@gmail.com',
+  SMTP_HOST: 'smtp.gmail.com',
+  SMTP_PORT: '587',
+  SMTP_USER: '',
+  SMTP_PASS: '',
+  EMAIL_FROM: 'geochambatina@gmail.com',
 };
 
 async function getOrCreate(clave: string): Promise<string> {
@@ -75,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     for (const [clave, valor] of Object.entries(configs)) {
-      if (DEFAULTS.hasOwnProperty(clave) || clave.startsWith('custom_')) {
+      if (DEFAULTS.hasOwnProperty(clave) || clave.startsWith('custom_') || clave.startsWith('SMTP_') || clave === 'EMAIL_FROM') {
         await setConfig(clave, String(valor || ''));
       }
     }

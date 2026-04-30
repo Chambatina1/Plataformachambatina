@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Save, Loader2, Check, Building2, Phone, Clock, Mail, Globe, Bot, Eye, EyeOff, Sparkles, AlertCircle } from 'lucide-react';
+import { Save, Loader2, Check, Building2, Phone, Clock, Mail, Globe, Bot, Eye, EyeOff, Sparkles, AlertCircle, Send, Server } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ConfigData {
@@ -30,6 +30,12 @@ interface ConfigData {
   ai_provider: string;
   ai_api_key: string;
   ai_model: string;
+  // SMTP Config
+  SMTP_HOST: string;
+  SMTP_PORT: string;
+  SMTP_USER: string;
+  SMTP_PASS: string;
+  EMAIL_FROM: string;
 }
 
 const DEFAULT_CONFIG: ConfigData = {
@@ -49,6 +55,11 @@ const DEFAULT_CONFIG: ConfigData = {
   ai_provider: 'deepseek',
   ai_api_key: '',
   ai_model: '',
+  SMTP_HOST: 'smtp.gmail.com',
+  SMTP_PORT: '587',
+  SMTP_USER: '',
+  SMTP_PASS: '',
+  EMAIL_FROM: 'geochambatina@gmail.com',
 };
 
 export function ConfigPanel() {
@@ -57,7 +68,10 @@ export function ConfigPanel() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
   const [aiStatus, setAiStatus] = useState<'unknown' | 'configured' | 'not_configured'>('unknown');
+  const [smtpStatus, setSmtpStatus] = useState<'unknown' | 'configured' | 'not_configured'>('unknown');
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -87,6 +101,17 @@ export function ConfigPanel() {
       setAiStatus('not_configured');
     }
   }, [config.ai_api_key, loading]);
+
+  // Check SMTP status
+  useEffect(() => {
+    if (config.SMTP_HOST && config.SMTP_USER && config.SMTP_PASS) {
+      setSmtpStatus('configured');
+    } else if (loading) {
+      setSmtpStatus('unknown');
+    } else {
+      setSmtpStatus('not_configured');
+    }
+  }, [config.SMTP_HOST, config.SMTP_USER, config.SMTP_PASS, loading]);
 
   const handleChange = (key: keyof ConfigData, value: string) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
@@ -119,6 +144,31 @@ export function ConfigPanel() {
 
   const updateField = (field: keyof ConfigData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     handleChange(field, e.target.value);
+  };
+
+  const handleTestEmail = async () => {
+    setTestEmailLoading(true);
+    try {
+      const res = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: config.EMAIL_FROM,
+          subject: 'Prueba SMTP - Chambatina',
+          html: '<h1>SMTP configurado correctamente!</h1><p>Los correos semanales se enviaran desde esta direccion.</p>',
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        toast.success('Correo de prueba enviado exitosamente!');
+      } else {
+        toast.error(json.error || 'Error al enviar correo de prueba');
+      }
+    } catch {
+      toast.error('Error de conexion');
+    } finally {
+      setTestEmailLoading(false);
+    }
   };
 
   if (loading) {
@@ -406,6 +456,132 @@ export function ConfigPanel() {
               onChange={updateField('facebook')}
               placeholder="facebook.com/chambatina"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SMTP / Email Configuration */}
+      <Card className={`border-2 ${smtpStatus === 'configured' ? 'border-emerald-200 bg-emerald-50/30' : smtpStatus === 'not_configured' ? 'border-amber-200 bg-amber-50/30' : 'border-zinc-200'}`}>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
+                  <Send className="h-5 w-5 text-white" />
+                </div>
+                Correos Automáticos (SMTP)
+              </CardTitle>
+              <CardDescription className="mt-1.5">
+                Configura el envío de correos semanales con estado de envíos SolvedCargo
+              </CardDescription>
+            </div>
+            {smtpStatus === 'configured' && (
+              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                <Sparkles className="h-3 w-3 mr-1" /> Activo
+              </Badge>
+            )}
+            {smtpStatus === 'not_configured' && (
+              <Badge className="bg-amber-100 text-amber-700 border-amber-200">
+                <AlertCircle className="h-3 w-3 mr-1" /> Sin configurar
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {smtpStatus === 'not_configured' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+              <p className="font-semibold mb-1">SMTP no configurado</p>
+              <p>Para enviar correos semanales a tus usuarios con el estado de SolvedCargo, configura los datos SMTP. Si usas Gmail, necesitas una <strong>Contraseña de Aplicación</strong> (no tu contraseña normal).</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Server className="h-3.5 w-3.5" /> SMTP Host
+              </Label>
+              <Input
+                value={config.SMTP_HOST}
+                onChange={updateField('SMTP_HOST')}
+                placeholder="smtp.gmail.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Puerto SMTP</Label>
+              <Input
+                value={config.SMTP_PORT}
+                onChange={updateField('SMTP_PORT')}
+                placeholder="587"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5" /> Usuario SMTP
+              </Label>
+              <Input
+                value={config.SMTP_USER}
+                onChange={updateField('SMTP_USER')}
+                placeholder="geochambatina@gmail.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5" /> Contraseña SMTP
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showSmtpPass ? 'text' : 'password'}
+                  value={config.SMTP_PASS}
+                  onChange={updateField('SMTP_PASS')}
+                  placeholder="xxxx xxxx xxxx xxxx"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSmtpPass(!showSmtpPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                >
+                  {showSmtpPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Email Remitente (From)</Label>
+            <Input
+              value={config.EMAIL_FROM}
+              onChange={updateField('EMAIL_FROM')}
+              placeholder="geochambatina@gmail.com"
+            />
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+            <p className="font-semibold mb-1">Para Gmail:</p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Activa la verificación en 2 pasos en tu cuenta Google</li>
+              <li>Ve a <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-semibold">myaccount.google.com/apppasswords</a></li>
+              <li>Crea una contraseña de aplicación (selecciona &quot;Correo&quot;)</li>
+              <li>Pega esa contraseña de 16 caracteres en el campo &quot;Contraseña SMTP&quot;</li>
+            </ol>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={handleTestEmail}
+              disabled={testEmailLoading || smtpStatus !== 'configured'}
+              variant="outline"
+              className="border-blue-200 text-blue-600 hover:bg-blue-50"
+            >
+              {testEmailLoading ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Enviando...</>
+              ) : (
+                <><Send className="h-4 w-4 mr-2" /> Enviar Correo de Prueba</>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
