@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from './store';
 import { Button } from '@/components/ui/button';
@@ -104,6 +104,9 @@ export function Servicios() {
   const [formContacto, setFormContacto] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formDeleting, setFormDeleting] = useState<number | null>(null);
+  const [formImagenUrl, setFormImagenUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Pagination
   const LIMIT = 20;
@@ -151,7 +154,37 @@ export function Servicios() {
     setFormCiudad('');
     setFormPrecio('');
     setFormContacto('');
+    setFormImagenUrl('');
     setEditingItem(null);
+  };
+
+  const handleImageUpload = async (file: File) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Solo se permiten imagenes (JPG, PNG, GIF, WebP)');
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error('La imagen debe ser menor a 4MB');
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const json = await res.json();
+      if (json.ok && json.data?.url) {
+        setFormImagenUrl(json.data.url);
+        toast.success('Imagen cargada');
+      } else {
+        toast.error('Error al subir imagen');
+      }
+    } catch {
+      toast.error('Error de conexion al subir imagen');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -174,6 +207,7 @@ export function Servicios() {
         ciudad: formCiudad.trim() || null,
         precio: formPrecio.trim() || null,
         contacto: formContacto.trim() || null,
+        imagenUrl: formImagenUrl.trim() || null,
         userId: currentUser.id,
       };
 
@@ -247,6 +281,7 @@ export function Servicios() {
     setFormCiudad(item.ciudad || '');
     setFormPrecio(item.precio || '');
     setFormContacto(item.contacto || '');
+    setFormImagenUrl(item.imagenUrl || '');
     setShowForm(true);
   };
 
@@ -444,20 +479,28 @@ export function Servicios() {
                   >
                     <div className="p-4">
                       <div className="flex gap-3">
-                        {/* Tipo badge */}
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                            isOferta
-                              ? 'bg-emerald-100 text-emerald-600'
-                              : 'bg-blue-100 text-blue-600'
-                          }`}
-                        >
-                          {isOferta ? (
-                            <Send className="h-4.5 w-4.5" />
-                          ) : (
-                            <Search className="h-4.5 w-4.5" />
-                          )}
-                        </div>
+                        {/* Image or Tipo badge */}
+                        {item.imagenUrl ? (
+                          <img
+                            src={item.imagenUrl}
+                            alt={item.titulo}
+                            className="w-16 h-16 rounded-xl object-cover shrink-0 border border-zinc-100"
+                          />
+                        ) : (
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              isOferta
+                                ? 'bg-emerald-100 text-emerald-600'
+                                : 'bg-blue-100 text-blue-600'
+                            }`}
+                          >
+                            {isOferta ? (
+                              <Send className="h-4.5 w-4.5" />
+                            ) : (
+                              <Search className="h-4.5 w-4.5" />
+                            )}
+                          </div>
+                        )}
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
@@ -527,6 +570,13 @@ export function Servicios() {
                                 className="overflow-hidden"
                               >
                                 <div className="mt-3 pt-3 border-t border-zinc-100">
+                                  {item.imagenUrl && (
+                                    <img
+                                      src={item.imagenUrl}
+                                      alt={item.titulo}
+                                      className="w-full rounded-xl mb-3 max-h-64 object-cover"
+                                    />
+                                  )}
                                   {item.descripcion && (
                                     <p className="text-sm text-zinc-600 leading-relaxed mb-3">
                                       {item.descripcion}
@@ -779,6 +829,61 @@ export function Servicios() {
                       className="h-11"
                     />
                   </div>
+                </div>
+
+                {/* Imagen */}
+                <div>
+                  <label className="text-xs font-medium text-zinc-600 mb-1.5 block">
+                    Foto del servicio o producto
+                  </label>
+                  {formImagenUrl ? (
+                    <div className="relative rounded-xl overflow-hidden border border-zinc-200">
+                      <img
+                        src={formImagenUrl}
+                        alt="Vista previa"
+                        className="w-full h-48 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormImagenUrl('')}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer.files[0];
+                        if (file) handleImageUpload(file);
+                      }}
+                      className="border-2 border-dashed border-zinc-200 rounded-xl p-6 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50/50 transition-colors"
+                    >
+                      {uploadingImage ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-amber-400 mx-auto mb-2" />
+                      ) : (
+                        <ImagePlus className="h-6 w-6 text-zinc-300 mx-auto mb-2" />
+                      )}
+                      <p className="text-xs text-zinc-400">
+                        {uploadingImage ? 'Subiendo...' : 'Haz clic o arrastra una imagen aqui'}
+                      </p>
+                      <p className="text-[10px] text-zinc-300 mt-1">JPG, PNG, GIF, WebP (max 4MB)</p>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file);
+                      e.target.value = '';
+                    }}
+                  />
                 </div>
 
                 {/* Submit */}

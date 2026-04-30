@@ -186,6 +186,7 @@ export async function PUT(request: NextRequest) {
     if (fields.ciudad !== undefined) updateData.ciudad = fields.ciudad?.trim() || null;
     if (fields.precio !== undefined) updateData.precio = fields.precio?.trim() || null;
     if (fields.contacto !== undefined) updateData.contacto = fields.contacto?.trim() || null;
+    if (fields.imagenUrl !== undefined) updateData.imagenUrl = typeof fields.imagenUrl === 'string' ? fields.imagenUrl.trim() || null : null;
     if (fields.tipo !== undefined && TIPOS_VALIDOS.includes(fields.tipo)) updateData.tipo = fields.tipo;
     if (fields.activo !== undefined) updateData.activo = Boolean(fields.activo);
 
