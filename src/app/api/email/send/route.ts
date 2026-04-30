@@ -29,15 +29,22 @@ async function sendWithResend(to: string, subject: string, html: string, fromEma
   const { Resend } = await import('resend');
   const resend = new Resend(apiKey);
 
-  // For Gmail/Yahoo/etc domains, use Resend's free onboarding domain
-  // because Resend requires domain verification for custom email providers
-  let resendFrom = fromEmail;
-  if (!fromEmail || fromEmail.includes('gmail.com') || fromEmail.includes('yahoo.com') || fromEmail.includes('hotmail.com')) {
-    // Extract display name if present
+  // ALWAYS use Resend's onboarding domain for the FROM address.
+  // Resend requires domain verification for any custom domain (gmail.com, etc.),
+  // so we rewrite to onboarding@resend.dev which is pre-verified.
+  // We preserve the configured display name.
+  let displayName = 'Chambatina';
+  if (fromEmail) {
     const match = fromEmail.match(/^(.+?)\s*<.*>$/);
-    const displayName = match ? match[1] : 'Chambatina';
-    resendFrom = `${displayName} <onboarding@resend.dev>`;
+    if (match) {
+      displayName = match[1].replace(/["']/g, '');
+    } else if (fromEmail.includes('@')) {
+      displayName = fromEmail.split('@')[0];
+    }
   }
+  const resendFrom = `${displayName} <onboarding@resend.dev>`;
+
+  console.log(`[Email] Resend FROM: ${resendFrom} (original: ${fromEmail})`);
 
   const { data, error } = await resend.emails.send({
     from: resendFrom,

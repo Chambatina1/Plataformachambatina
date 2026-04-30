@@ -182,13 +182,18 @@ export async function GET(req: Request) {
       const { Resend } = await import('resend');
       const resend = new Resend(resendApiKey);
 
-      // Use Resend onboarding domain for Gmail addresses
-      let resendFrom = emailFrom;
-      if (emailFrom.includes('gmail.com') || emailFrom.includes('yahoo.com') || emailFrom.includes('hotmail.com')) {
+      // ALWAYS use Resend onboarding domain — custom domains need verification
+      let displayName = 'Chambatina';
+      if (emailFrom) {
         const match = emailFrom.match(/^(.+?)\s*<.*>$/);
-        const displayName = match ? match[1] : 'Chambatina';
-        resendFrom = `${displayName} <onboarding@resend.dev>`;
+        if (match) {
+          displayName = match[1].replace(/["']/g, '');
+        } else if (emailFrom.includes('@')) {
+          displayName = emailFrom.split('@')[0];
+        }
       }
+      const resendFrom = `${displayName} <onboarding@resend.dev>`;
+      console.log(`[WeeklyEmail] Resend FROM: ${resendFrom} (original: ${emailFrom})`);
 
       for (const u of users) {
         if (!u.email) continue;
