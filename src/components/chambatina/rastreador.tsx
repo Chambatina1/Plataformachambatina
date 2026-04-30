@@ -194,7 +194,7 @@ export function Rastreador() {
                 placeholder="Número CPK, carnet de identidad..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-10 border-orange-200 focus:border-orange-400"
+                className="pl-10 border-orange-200 focus:border-orange-400 text-zinc-900"
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
               {searchInput.trim() && (
