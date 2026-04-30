@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
-import nodemailer from 'nodemailer';
 
 // ─── Validación ────────────────────────────────────────────────────────
 const emailSchema = z.object({
@@ -11,52 +10,70 @@ const emailSchema = z.object({
   tipo: z.string().optional().default('general'),
 });
 
-// ─── Obtener configuración SMTP desde Config table ─────────────────────
-async function getSmtpConfig() {
+// ─── Obtener API key de Resend ────────────────────────────────────────
+async function getResendApiKey(): Promise<string | null> {
+  // Priority: env var > config table
+  if (process.env.RESEND_API_KEY) return process.env.RESEND_API_KEY;
   try {
-    const keys = [
-      'SMTP_HOST',
-      'SMTP_PORT',
-      'SMTP_USER',
-      'SMTP_PASS',
-      'EMAIL_FROM',
-    ];
-    const entries = await db.config.findMany({
-      where: { clave: { in: keys } },
-    });
-    const config: Record<string, string> = {};
-    for (const entry of entries) {
-      config[entry.clave] = entry.valor;
-    }
-    return config;
-  } catch {
-    return {};
-  }
+    const entry = await db.config.findUnique({ where: { clave: 'RESEND_API_KEY' } });
+    if (entry?.valor) return entry.valor;
+  } catch {}
+  return null;
 }
 
-// ─── Crear transporter de nodemailer ────────────────────────────────────
-async function createTransporter() {
-  // Prioridad: Config table > Environment variables
-  const dbConfig = await getSmtpConfig();
+// ─── Enviar con Resend ───────────────────────────────────────────────
+async function sendWithResend(to: string, subject: string, html: string, fromEmail: string) {
+  const apiKey = await getResendApiKey();
+  if (!apiKey) return null;
 
-  const host = dbConfig.SMTP_HOST || process.env.SMTP_HOST || '';
-  const port = parseInt(
-    dbConfig.SMTP_PORT || process.env.SMTP_PORT || '587',
-    10
-  );
-  const user = dbConfig.SMTP_USER || process.env.SMTP_USER || '';
-  const pass = dbConfig.SMTP_PASS || process.env.SMTP_PASS || '';
+  const { Resend } = await import('resend');
+  const resend = new Resend(apiKey);
 
-  if (!host || !user || !pass) {
-    return null; // SMTP no configurado
-  }
+  const { data, error } = await resend.emails.send({
+    from: fromEmail,
+    to,
+    subject,
+    html,
+  });
 
-  return nodemailer.createTransport({
+  if (error) throw new Error(error.message);
+  return data?.id;
+}
+
+// ─── Enviar con Nodemailer (Gmail SMTP fallback) ──────────────────────
+async function sendWithNodemailer(to: string, subject: string, html: string, fromEmail: string) {
+  const nodemailer = (await import('nodemailer')).default;
+
+  let host = process.env.SMTP_HOST || '';
+  let port = parseInt(process.env.SMTP_PORT || '587', 10);
+  let user = process.env.SMTP_USER || '';
+  let pass = process.env.SMTP_PASS || '';
+
+  // Also check Config table
+  try {
+    const keys = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
+    const entries = await db.config.findMany({ where: { clave: { in: keys } } });
+    for (const entry of entries) {
+      if (entry.valor) {
+        if (entry.clave === 'SMTP_HOST') host = entry.valor;
+        if (entry.clave === 'SMTP_PORT') port = parseInt(entry.valor, 10);
+        if (entry.clave === 'SMTP_USER') user = entry.valor;
+        if (entry.clave === 'SMTP_PASS') pass = entry.valor;
+      }
+    }
+  } catch {}
+
+  if (!host || !user || !pass) return null;
+
+  const transporter = nodemailer.createTransport({
     host,
     port,
     secure: port === 465,
     auth: { user, pass },
   });
+
+  const info = await transporter.sendMail({ from: fromEmail, to, subject, html });
+  return info.messageId;
 }
 
 // ─── POST /api/email/send ──────────────────────────────────────────────
@@ -74,58 +91,50 @@ export async function POST(request: NextRequest) {
 
     const { to, subject, html, tipo } = validated.data;
 
-    const transporter = await createTransporter();
-    const emailFrom =
-      process.env.EMAIL_FROM ||
-      (await (async () => {
-        const cfg = await getSmtpConfig();
-        return cfg.EMAIL_FROM || '';
-      })());
+    // Get "from" email
+    let emailFrom = process.env.EMAIL_FROM || '';
+    try {
+      const cfg = await db.config.findUnique({ where: { clave: 'EMAIL_FROM' } });
+      if (cfg?.valor) emailFrom = cfg.valor;
+    } catch {}
 
     let messageId: string | undefined;
     let estado = 'enviado' as const;
     let errorMsg: string | null = null;
     let warning: string | null = null;
 
-    if (transporter && emailFrom) {
-      // ── Enviar correo real ─────────────────────────────────────────
-      try {
-        const info = await transporter.sendMail({
-          from: emailFrom,
-          to,
-          subject,
-          html,
-        });
-        messageId = info.messageId;
-        console.log(`[Email] Correo enviado a ${to} (${tipo}) - ${messageId}`);
-      } catch (sendErr) {
-        const msg =
-          sendErr instanceof Error ? sendErr.message : 'Error desconocido';
-        console.error(`[Email] Error al enviar correo a ${to}:`, msg);
-        estado = 'fallido';
-        errorMsg = msg;
-
-        // Log pero no fallar la petición
-        return NextResponse.json(
-          { ok: false, error: `Error al enviar correo: ${msg}` },
-          { status: 500 }
-        );
+    // Try Resend first, then Nodemailer fallback
+    try {
+      // Try Resend
+      const resendId = await sendWithResend(to, subject, html, emailFrom);
+      if (resendId) {
+        messageId = resendId;
+        console.log(`[Email] Enviado via Resend a ${to} (${tipo}) - ${resendId}`);
+      } else {
+        // Try Nodemailer
+        const smtpId = await sendWithNodemailer(to, subject, html, emailFrom);
+        if (smtpId) {
+          messageId = smtpId;
+          console.log(`[Email] Enviado via SMTP a ${to} (${tipo}) - ${smtpId}`);
+        } else {
+          // No email provider configured
+          console.log('[Email] No hay proveedor de email configurado');
+          estado = 'enviado';
+          warning = 'No hay proveedor de email configurado. Correo registrado pero no enviado.';
+        }
       }
-    } else {
-      // ── SMTP no configurado — log del correo ───────────────────────
-      console.log('╔══════════════════════════════════════════════════╗');
-      console.log('║  ⚠️  SMTP NO CONFIGURADO — Log de correo        ║');
-      console.log('╠══════════════════════════════════════════════════╣');
-      console.log(`║  Para:   ${to}`);
-      console.log(`║  Asunto: ${subject}`);
-      console.log(`║  Tipo:   ${tipo}`);
-      console.log(`║  HTML:   ${html.substring(0, 200)}...`);
-      console.log('╚══════════════════════════════════════════════════╝');
-      estado = 'enviado';
-      warning = 'SMTP no configurado. El correo fue registrado pero no enviado.';
+    } catch (sendErr) {
+      const msg = sendErr instanceof Error ? sendErr.message : 'Error desconocido';
+      console.error(`[Email] Error al enviar correo a ${to}:`, msg);
+      estado = 'fallido';
+      errorMsg = msg;
+      return NextResponse.json(
+        { ok: false, error: `Error al enviar correo: ${msg}` },
+        { status: 500 }
+      );
     }
 
-    // ── Guardar log en EmailLog ──────────────────────────────────────
+    // Guardar log en EmailLog
     try {
       await db.emailLog.create({
         data: {
@@ -142,19 +151,11 @@ export async function POST(request: NextRequest) {
 
     const response: Record<string, unknown> = {
       ok: true,
-      data: {
-        estado,
-        tipo,
-        to,
-      },
+      data: { estado, tipo, to },
     };
 
-    if (messageId) {
-      response.data.messageId = messageId;
-    }
-    if (warning) {
-      response.warning = warning;
-    }
+    if (messageId) response.data.messageId = messageId;
+    if (warning) response.warning = warning;
 
     return NextResponse.json(response);
   } catch (error) {

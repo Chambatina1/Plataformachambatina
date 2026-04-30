@@ -36,6 +36,7 @@ interface ConfigData {
   SMTP_USER: string;
   SMTP_PASS: string;
   EMAIL_FROM: string;
+  RESEND_API_KEY: string;
 }
 
 const DEFAULT_CONFIG: ConfigData = {
@@ -60,6 +61,7 @@ const DEFAULT_CONFIG: ConfigData = {
   SMTP_USER: '',
   SMTP_PASS: '',
   EMAIL_FROM: 'geochambatina@gmail.com',
+  RESEND_API_KEY: '',
 };
 
 export function ConfigPanel() {
@@ -112,14 +114,14 @@ export function ConfigPanel() {
 
   // Check SMTP status
   useEffect(() => {
-    if (config.SMTP_HOST && config.SMTP_USER && config.SMTP_PASS) {
+    if (config.RESEND_API_KEY || (config.SMTP_HOST && config.SMTP_USER && config.SMTP_PASS)) {
       setSmtpStatus('configured');
     } else if (loading) {
       setSmtpStatus('unknown');
     } else {
       setSmtpStatus('not_configured');
     }
-  }, [config.SMTP_HOST, config.SMTP_USER, config.SMTP_PASS, loading]);
+  }, [config.SMTP_HOST, config.SMTP_USER, config.SMTP_PASS, config.RESEND_API_KEY, loading]);
 
   const handleChange = (key: keyof ConfigData, value: string) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
@@ -570,13 +572,38 @@ export function ConfigPanel() {
             />
           </div>
 
+          {/* Resend API Key (recommended - no password issues) */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">
+            <p className="font-semibold mb-1">Metodo recomendado: Resend (sin complicaciones)</p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Crea cuenta gratis en <a href="https://resend.com/signup" target="_blank" rel="noopener noreferrer" className="underline font-semibold">resend.com/signup</a></li>
+              <li>Ve a <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline font-semibold">resend.com/api-keys</a> y crea una API Key</li>
+              <li>Pega la API Key aqui abajo</li>
+            </ol>
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" /> Resend API Key (recomendado)
+            </Label>
+            <Input
+              value={config.RESEND_API_KEY}
+              onChange={updateField('RESEND_API_KEY')}
+              placeholder="re_xxxxxxxxxxxxxxxxxxxx"
+            />
+            <p className="text-xs text-muted-foreground">
+              Si configuras Resend, se usara automaticamente. 100 correos/dia gratis.
+            </p>
+          </div>
+
+          <Separator />
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-            <p className="font-semibold mb-1">Para Gmail:</p>
+            <p className="font-semibold mb-1">Alternativa: SMTP con Gmail</p>
             <ol className="list-decimal list-inside space-y-1">
               <li>Activa la verificación en 2 pasos en tu cuenta Google</li>
               <li>Ve a <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-semibold">myaccount.google.com/apppasswords</a></li>
               <li>Crea una contraseña de aplicación (selecciona &quot;Correo&quot;)</li>
-              <li>Pega esa contraseña de 16 caracteres en el campo &quot;Contraseña SMTP&quot;</li>
+              <li>Pega esa contraseña de 16 caracteres en el campo de arriba</li>
             </ol>
           </div>
 

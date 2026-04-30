@@ -156,21 +156,57 @@ export async function GET(req: Request) {
 </div>
 </body></html>`;
 
-    // 6. Get SMTP config
+    // 6. Email sending — try Resend first, then SMTP
+    let sent = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    const emailFrom = process.env.EMAIL_FROM || 'Chambatina <geochambatina@gmail.com>';
+
+    // Check for Resend API key
+    let resendApiKey = process.env.RESEND_API_KEY || '';
+    try {
+      const cfg = await db.config.findUnique({ where: { clave: 'RESEND_API_KEY' } });
+      if (cfg?.valor) resendApiKey = cfg.valor;
+    } catch {}
+
+    // Check for SMTP config
     const smtpConfig = await getSmtpConfig();
     const host = smtpConfig.SMTP_HOST || process.env.SMTP_HOST || '';
     const port = parseInt(smtpConfig.SMTP_PORT || process.env.SMTP_PORT || '587', 10);
     const smtpUser = smtpConfig.SMTP_USER || process.env.SMTP_USER || '';
     const smtpPass = smtpConfig.SMTP_PASS || process.env.SMTP_PASS || '';
-    const emailFrom = smtpConfig.EMAIL_FROM || process.env.EMAIL_FROM || '';
-    const smtpReady = !!(host && smtpUser && smtpPass && emailFrom);
+    const smtpReady = !!(host && smtpUser && smtpPass);
 
-    let sent = 0;
-    let failed = 0;
-    const errors: string[] = [];
+    if (resendApiKey) {
+      // Send via Resend
+      const { Resend } = await import('resend');
+      const resend = new Resend(resendApiKey);
 
-    if (smtpReady) {
-      // Dynamic import nodemailer
+      for (const u of users) {
+        if (!u.email) continue;
+        try {
+          const { error } = await resend.emails.send({
+            from: emailFrom,
+            to: u.email,
+            subject: `Reporte Semanal de Envios - Chambatina (${today})`,
+            html: buildHtml(u.nombre || 'Cliente'),
+          });
+          if (error) throw new Error(error.message);
+          sent++;
+          await db.emailLog.create({
+            data: { userId: u.id, userEmail: u.email, asunto: 'Reporte Semanal - Chambatina', tipo: 'weekly-tracking', estado: 'enviado' },
+          });
+        } catch (err: any) {
+          failed++;
+          errors.push(`${u.email}: ${err.message}`);
+          await db.emailLog.create({
+            data: { userId: u.id, userEmail: u.email, asunto: 'Reporte Semanal - Chambatina', tipo: 'weekly-tracking', estado: 'fallido', error: err.message },
+          });
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+    } else if (smtpReady) {
+      // Send via Nodemailer SMTP
       const nodemailer = (await import('nodemailer')).default;
       const transporter = nodemailer.createTransport({
         host, port, secure: port === 465, auth: { user: smtpUser, pass: smtpPass },
@@ -196,18 +232,10 @@ export async function GET(req: Request) {
             data: { userId: u.id, userEmail: u.email, asunto: 'Reporte Semanal - Chambatina', tipo: 'weekly-tracking', estado: 'fallido', error: err.message },
           });
         }
-        await new Promise(r => setTimeout(r, 500)); // Rate limit
+        await new Promise(r => setTimeout(r, 500));
       }
     } else {
-      // No SMTP — log and save
-      console.log(`[WeeklyEmail] SMTP no configurado. ${users.length} usuarios, ${totalPackages} paquetes.`);
-      sent = 0;
-      for (const u of users) {
-        if (!u.email) continue;
-        await db.emailLog.create({
-          data: { userId: u.id, userEmail: u.email, asunto: 'Reporte Semanal - Chambatina (SMTP no configurado)', tipo: 'weekly-tracking', estado: 'enviado', error: 'SMTP no configurado' },
-        });
-      }
+      console.log(`[WeeklyEmail] No email provider configured. ${users.length} usuarios, ${totalPackages} paquetes.`);
     }
 
     // 7. Update last sent timestamp
@@ -227,7 +255,7 @@ export async function GET(req: Request) {
       entregados,
       enTransito,
       solvedCargoError,
-      smtpReady,
+      emailProvider: resendApiKey ? 'resend' : smtpReady ? 'smtp' : 'none',
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {

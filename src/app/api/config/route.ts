@@ -28,6 +28,7 @@ const DEFAULTS: Record<string, string> = {
   SMTP_USER: '',
   SMTP_PASS: '',
   EMAIL_FROM: 'geochambatina@gmail.com',
+  RESEND_API_KEY: '',
 };
 
 async function getOrCreate(clave: string): Promise<string> {
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     for (const [clave, valor] of Object.entries(configs)) {
-      if (DEFAULTS.hasOwnProperty(clave) || clave.startsWith('custom_') || clave.startsWith('SMTP_') || clave === 'EMAIL_FROM') {
+      if (DEFAULTS.hasOwnProperty(clave) || clave.startsWith('custom_') || clave.startsWith('SMTP_') || clave === 'EMAIL_FROM' || clave === 'RESEND_API_KEY') {
         await setConfig(clave, String(valor || ''));
       }
     }
