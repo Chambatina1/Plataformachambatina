@@ -232,6 +232,21 @@ model DigitalService {
   updatedAt   DateTime @updatedAt @db.Timestamp(6)
 }
 
+model InternalMessage {
+  id         Int      @id @default(autoincrement())
+  senderId   Int
+  receiverId Int?
+  senderName String
+  content    String
+  isRead     Boolean  @default(false)
+  isAdmin    Boolean  @default(false)
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([receiverId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
 model OnlinePresence {
   id        Int      @id @default(autoincrement())
   userId    Int

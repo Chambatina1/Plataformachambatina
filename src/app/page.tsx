@@ -28,6 +28,8 @@ import { WelcomePopup } from '@/components/chambatina/welcome-popup';
 import { EmailLeadsPanel } from '@/components/chambatina/email-leads-panel';
 import { ServiciosDigitales } from '@/components/chambatina/servicios-digitales';
 import { ServiciosDigitalesAdmin } from '@/components/chambatina/servicios-digitales-admin';
+import { MessagesAdmin } from '@/components/chambatina/messages-admin';
+import { MessagesUser } from '@/components/chambatina/messages-user';
 import { Button } from '@/components/ui/button';
 
 // Error-safe component wrapper
@@ -281,6 +283,7 @@ export default function Page() {
         case 'servicios': return <Servicios />;
         case 'pedido-public': return <PedidoForm />;
         case 'servicios-digitales': return <ServiciosDigitales />;
+        case 'messages': return <MessagesUser />;
         default: return <Home />;
       }
     } else {
@@ -300,6 +303,7 @@ export default function Page() {
         case 'servicios-admin': return <Servicios />;
         case 'leads': return <EmailLeadsPanel />;
         case 'servicios-digitales-admin': return <ServiciosDigitalesAdmin />;
+        case 'messages-admin': return <MessagesAdmin />;
         default: return <AdminDashboard />;
       }
     }

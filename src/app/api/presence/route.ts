@@ -70,9 +70,14 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// GET /api/presence — Get currently online users (admin)
-export async function GET() {
+// GET /api/presence — Get currently online users
+// ?online=true → return simplified list of unique online users (for messaging)
+// Default → return full presence data (admin dashboard)
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const onlineOnly = searchParams.get('online') === 'true';
+
     const threshold = new Date(Date.now() - ONLINE_THRESHOLD_MINUTES * 60 * 1000);
 
     // Clean stale sessions first
@@ -95,6 +100,30 @@ export async function GET() {
       },
       orderBy: { lastSeen: 'desc' },
     });
+
+    if (onlineOnly) {
+      // Deduplicate by userId and return simplified list
+      const seen = new Set<number>();
+      const uniqueUsers = onlineUsers
+        .filter((entry) => {
+          if (seen.has(entry.userId) || !entry.user) return false;
+          seen.add(entry.userId);
+          return true;
+        })
+        .map((entry) => ({
+          id: entry.user!.id,
+          nombre: entry.user!.nombre,
+          email: entry.user!.email,
+          ciudad: entry.user!.ciudad,
+          lastSeen: entry.lastSeen,
+        }));
+
+      return NextResponse.json({
+        ok: true,
+        data: uniqueUsers,
+        count: uniqueUsers.length,
+      });
+    }
 
     return NextResponse.json({
       ok: true,

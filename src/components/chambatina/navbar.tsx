@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Search,
   MessageCircle,
+  MessageSquare,
   Menu,
   Lock,
   Handshake,
@@ -37,11 +38,30 @@ const publicNavItems: { view: PublicView; label: string; icon: typeof Home }[] =
   { view: 'rastreador', label: 'Rastreador', icon: Search },
   { view: 'chat', label: 'Chat IA', icon: MessageCircle },
   { view: 'servicios-digitales', label: 'Digitales', icon: Sparkles },
+  { view: 'messages', label: 'Mensajes', icon: MessageSquare },
 ];
 
 function PublicNavbar() {
   const { currentView, setCurrentView, goToAdmin, currentUser, setCurrentUser, setShowRegisterDialog } = useAppStore();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Poll unread message count
+  useEffect(() => {
+    if (!currentUser) return;
+
+    async function fetchUnread() {
+      try {
+        const res = await fetch(`/api/messages?unread=true&userId=${currentUser.id}`);
+        const json = await res.json();
+        if (json.ok) setUnreadCount(json.data?.count || 0);
+      } catch {}
+    }
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 10000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   const handleNav = (view: PublicView) => {
     setCurrentView(view);
@@ -98,11 +118,12 @@ function PublicNavbar() {
               {publicNavItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.view);
+                const isMessages = item.view === 'messages';
                 return (
                   <button
                     key={item.view}
                     onClick={() => handleNav(item.view)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       active
                         ? 'bg-orange-50 text-orange-700'
                         : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
@@ -110,6 +131,11 @@ function PublicNavbar() {
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}
+                    {isMessages && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -166,11 +192,12 @@ function PublicNavbar() {
                     {publicNavItems.map((item) => {
                       const Icon = item.icon;
                       const active = isActive(item.view);
+                      const isMessages = item.view === 'messages';
                       return (
                         <button
                           key={item.view}
                           onClick={() => handleNav(item.view)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                             active
                               ? 'bg-orange-50 text-orange-700'
                               : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
@@ -178,6 +205,11 @@ function PublicNavbar() {
                         >
                           <Icon className="h-5 w-5" />
                           {item.label}
+                          {isMessages && unreadCount > 0 && (
+                            <span className="absolute top-2 right-3 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -213,11 +245,12 @@ function PublicNavbar() {
           {publicNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.view);
+            const isMessages = item.view === 'messages';
             return (
               <button
                 key={item.view}
                 onClick={() => handleNav(item.view)}
-                className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-[10px] font-medium transition-all duration-200 min-w-[56px] ${
+                className={`relative flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-[10px] font-medium transition-all duration-200 min-w-[56px] ${
                   active
                     ? 'text-orange-600'
                     : 'text-zinc-400 hover:text-zinc-600'
@@ -225,6 +258,11 @@ function PublicNavbar() {
               >
                 <Icon className="h-5 w-5" />
                 <span>{item.label}</span>
+                {isMessages && unreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -254,6 +292,7 @@ const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3 }[
   { view: 'users', label: 'Usuarios', icon: Users },
   { view: 'leads', label: 'Leads', icon: Mail },
   { view: 'servicios-digitales-admin', label: 'Digitales', icon: Sparkles },
+  { view: 'messages-admin', label: 'Mensajes', icon: MessageSquare },
   { view: 'config', label: 'Config', icon: Settings },
 ];
 
