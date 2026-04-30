@@ -162,3 +162,29 @@ Stage Summary:
 - Chat input text visibility fixed with triple-redundancy approach: ID-based CSS !important + CSSOM imperative styles + MutationObserver
 - All chat text colors now use inline styles to bypass any CSS framework issues
 - Deployed to Render, pending build completion
+
+---
+Task ID: 1
+Agent: Main
+Task: Verify and deploy messaging system + SMTP config for weekly emails
+
+Work Log:
+- Reviewed full project codebase - messaging system already fully implemented
+- InternalMessage, OnlinePresence models in Prisma
+- messages-user.tsx, messages-admin.tsx components built and working
+- API endpoints: /api/messages, /api/presence all functional
+- Navbar has Mensajes tab with unread badge for users
+- Admin has Mensajes tab with broadcast, online users, conversation list
+- Weekly email automation: /api/email/weekly-tracking + /api/cron/weekly-email
+- Added SMTP configuration section to Config panel (admin UI)
+- SMTP fields: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM
+- Test email button to verify SMTP connection
+- Default email: geochambatina@gmail.com
+- Fixed uppercase/lowercase key mapping between config panel and email APIs
+- Push and deployed to Render
+
+Stage Summary:
+- All messaging features are live and working
+- SMTP config panel added to admin → Config → Correos Automáticos
+- User needs to add Gmail App Password in admin panel to enable weekly emails
+- Commit: 972b57c
