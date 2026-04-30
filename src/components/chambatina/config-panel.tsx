@@ -72,13 +72,21 @@ export function ConfigPanel() {
   const [aiStatus, setAiStatus] = useState<'unknown' | 'configured' | 'not_configured'>('unknown');
   const [smtpStatus, setSmtpStatus] = useState<'unknown' | 'configured' | 'not_configured'>('unknown');
   const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [smtpFromEnv, setSmtpFromEnv] = useState<string[]>([]);
 
   const loadConfig = useCallback(async () => {
     try {
       const res = await fetch('/api/config');
       const json = await res.json();
       if (json.ok) {
-        setConfig({ ...DEFAULT_CONFIG, ...json.data });
+        const meta = json.meta || {};
+        setSmtpFromEnv(meta.smtp_from_env || []);
+        const data = json.data || {};
+        // If SMTP_PASS comes from env, show it as empty so user can enter a new one
+        if (meta.smtp_from_env && meta.smtp_from_env.includes('SMTP_PASS')) {
+          data.SMTP_PASS = '';
+        }
+        setConfig({ ...DEFAULT_CONFIG, ...data });
       }
     } catch {
       toast.error('Error al cargar la configuración');
@@ -536,7 +544,7 @@ export function ConfigPanel() {
                   type={showSmtpPass ? 'text' : 'password'}
                   value={config.SMTP_PASS}
                   onChange={updateField('SMTP_PASS')}
-                  placeholder="xxxx xxxx xxxx xxxx"
+                  placeholder={smtpFromEnv.includes('SMTP_PASS') ? 'Pegar nueva contraseña aqui...' : 'xxxx xxxx xxxx xxxx'}
                   className="pr-10"
                 />
                 <button
@@ -547,6 +555,9 @@ export function ConfigPanel() {
                   {showSmtpPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {smtpFromEnv.includes('SMTP_PASS') && (
+                <p className="text-xs text-blue-600 mt-1">Hay una contraseña guardada en el servidor. Pega aqui la nueva para reemplazarla.</p>
+              )}
             </div>
           </div>
 
