@@ -29,8 +29,18 @@ async function sendWithResend(to: string, subject: string, html: string, fromEma
   const { Resend } = await import('resend');
   const resend = new Resend(apiKey);
 
+  // For Gmail/Yahoo/etc domains, use Resend's free onboarding domain
+  // because Resend requires domain verification for custom email providers
+  let resendFrom = fromEmail;
+  if (!fromEmail || fromEmail.includes('gmail.com') || fromEmail.includes('yahoo.com') || fromEmail.includes('hotmail.com')) {
+    // Extract display name if present
+    const match = fromEmail.match(/^(.+?)\s*<.*>$/);
+    const displayName = match ? match[1] : 'Chambatina';
+    resendFrom = `${displayName} <onboarding@resend.dev>`;
+  }
+
   const { data, error } = await resend.emails.send({
-    from: fromEmail,
+    from: resendFrom,
     to,
     subject,
     html,

@@ -182,11 +182,19 @@ export async function GET(req: Request) {
       const { Resend } = await import('resend');
       const resend = new Resend(resendApiKey);
 
+      // Use Resend onboarding domain for Gmail addresses
+      let resendFrom = emailFrom;
+      if (emailFrom.includes('gmail.com') || emailFrom.includes('yahoo.com') || emailFrom.includes('hotmail.com')) {
+        const match = emailFrom.match(/^(.+?)\s*<.*>$/);
+        const displayName = match ? match[1] : 'Chambatina';
+        resendFrom = `${displayName} <onboarding@resend.dev>`;
+      }
+
       for (const u of users) {
         if (!u.email) continue;
         try {
           const { error } = await resend.emails.send({
-            from: emailFrom,
+            from: resendFrom,
             to: u.email,
             subject: `Reporte Semanal de Envios - Chambatina (${today})`,
             html: buildHtml(u.nombre || 'Cliente'),
