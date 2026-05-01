@@ -28,7 +28,6 @@ import {
   Mail,
   Sparkles,
   Calendar,
-  FileText,
 } from 'lucide-react';
 
 // ---- PUBLIC NAV ----
@@ -304,7 +303,6 @@ const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3 }[
   { view: 'el-tati', label: 'El Tati', icon: Calendar },
   { view: 'servicios-digitales-admin', label: 'Digitales', icon: Sparkles },
   { view: 'messages-admin', label: 'Mensajes', icon: MessageSquare },
-  { view: 'public-forms', label: 'Formularios', icon: FileText },
   { view: 'config', label: 'Config', icon: Settings },
 ];
 
