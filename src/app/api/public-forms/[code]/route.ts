@@ -14,7 +14,7 @@ export async function GET(
     }
 
     const form = await db.publicForm.findUnique({
-      where: { code: code.toUpperCase() },
+      where: { codigo: code.toUpperCase() },
     });
 
     if (!form) {

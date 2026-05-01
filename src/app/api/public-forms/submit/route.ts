@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     // Verify form exists and is active
     const form = await db.publicForm.findUnique({
-      where: { code: codigo.toUpperCase() },
+      where: { codigo: codigo.toUpperCase() },
     });
 
     if (!form) {
