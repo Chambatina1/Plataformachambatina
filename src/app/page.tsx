@@ -23,7 +23,7 @@ import { AITrainingPanel } from '@/components/chambatina/ai-training-panel';
 import { AparienciaPanel } from '@/components/chambatina/apariencia-panel';
 import { UsersPanel } from '@/components/chambatina/users-panel';
 import { Servicios } from '@/components/chambatina/servicios';
-import { WhatsAppFloat, TikTokFloat } from '@/components/chambatina/marketing';
+import { TikTokFloat } from '@/components/chambatina/marketing';
 import { WelcomePopup } from '@/components/chambatina/welcome-popup';
 import { EmailLeadsPanel } from '@/components/chambatina/email-leads-panel';
 import { ServiciosDigitales } from '@/components/chambatina/servicios-digitales';
@@ -389,7 +389,6 @@ export default function Page() {
         </main>
         <LoginDialog />
         <RegisterDialog />
-        {mode === 'public' && <WhatsAppFloat />}
         {mode === 'public' && <TikTokFloat />}
         {mode === 'public' && <WelcomePopup />}
       </div>

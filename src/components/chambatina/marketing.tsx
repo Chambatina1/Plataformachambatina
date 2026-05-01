@@ -150,7 +150,7 @@ export function TikTokFloat() {
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="fixed bottom-24 left-4 z-[90] w-72 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden"
+            className="fixed bottom-36 left-4 z-[90] w-72 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden"
           >
             {/* TikTok-style header */}
             <div className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 p-3 flex items-center gap-2">
@@ -199,7 +199,7 @@ export function TikTokFloat() {
         animate={{ scale: 1 }}
         transition={{ delay: 1.2, type: 'spring' }}
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 left-4 z-[90] w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-400 via-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 hover:shadow-pink-500/50"
+        className="fixed bottom-20 left-4 z-[90] w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-400 via-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 hover:shadow-pink-500/50"
       >
         {open ? (
           <X className="h-6 w-6" />
