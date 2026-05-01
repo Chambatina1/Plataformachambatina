@@ -32,10 +32,12 @@ import {
 
 // ---- PUBLIC NAV ----
 
-const publicNavItems: { view: PublicView; label: string; icon: typeof Home }[] = [
+const MARKETPLACE_URL = '/marketplace';
+
+const publicNavItems: { view: PublicView; label: string; icon: typeof Home; external?: string }[] = [
   { view: 'home', label: 'Inicio', icon: Home },
   { view: 'tienda', label: 'Tienda', icon: ShoppingBag },
-  { view: 'servicios', label: 'Servicios', icon: Handshake },
+  { view: 'servicios', label: 'Marketplace', icon: Handshake, external: MARKETPLACE_URL },
   { view: 'rastreador', label: 'Rastreador', icon: Search },
   { view: 'chat', label: 'Chat IA', icon: MessageCircle },
   { view: 'servicios-digitales', label: 'Digitales', icon: Sparkles },
@@ -65,6 +67,12 @@ function PublicNavbar() {
   }, [currentUser]);
 
   const handleNav = (view: PublicView) => {
+    const item = publicNavItems.find(n => n.view === view);
+    if (item?.external) {
+      window.open(item.external, '_blank');
+      setSheetOpen(false);
+      return;
+    }
     setCurrentView(view);
     setSheetOpen(false);
   };
