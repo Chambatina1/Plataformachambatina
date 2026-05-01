@@ -29,6 +29,7 @@ import { EmailLeadsPanel } from '@/components/chambatina/email-leads-panel';
 import { ServiciosDigitales } from '@/components/chambatina/servicios-digitales';
 import { ServiciosDigitalesAdmin } from '@/components/chambatina/servicios-digitales-admin';
 import { MessagesAdmin } from '@/components/chambatina/messages-admin';
+import { ElTati } from '@/components/chambatina/el-tati';
 import { MessagesUser } from '@/components/chambatina/messages-user';
 import { Resenas } from '@/components/chambatina/resenas';
 import { Button } from '@/components/ui/button';
@@ -311,6 +312,7 @@ export default function Page() {
         case 'leads': return <EmailLeadsPanel />;
         case 'servicios-digitales-admin': return <ServiciosDigitalesAdmin />;
         case 'messages-admin': return <MessagesAdmin />;
+        case 'el-tati': return <ElTati />;
         default: return <AdminDashboard />;
       }
     }

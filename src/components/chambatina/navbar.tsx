@@ -27,6 +27,7 @@ import {
   UserPlus,
   Mail,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 
 // ---- PUBLIC NAV ----
@@ -291,6 +292,7 @@ const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3 }[
   { view: 'apariencia', label: 'Apariencia', icon: Palette },
   { view: 'users', label: 'Usuarios', icon: Users },
   { view: 'leads', label: 'Leads', icon: Mail },
+  { view: 'el-tati', label: 'El Tati', icon: Calendar },
   { view: 'servicios-digitales-admin', label: 'Digitales', icon: Sparkles },
   { view: 'messages-admin', label: 'Mensajes', icon: MessageSquare },
   { view: 'config', label: 'Config', icon: Settings },

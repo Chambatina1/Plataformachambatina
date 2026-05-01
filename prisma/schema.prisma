@@ -290,3 +290,52 @@ model Resena {
   @@index([activa])
   @@index([createdAt])
 }
+
+model TatiAppointment {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  descripcion String?
+  fecha       DateTime  @db.Date
+  hora        String?   // "14:00", "09:30", etc.
+  duracion    Int?      @default(30) // minutes
+  prioridad   String    @default("media") // "alta", "media", "baja"
+  estado      String    @default("pendiente") // "pendiente", "completada", "cancelada"
+  tipo        String    @default("cita") // "cita", "tarea", "recordatorio", "reunion"
+  ubicacion   String?
+  contacto    String?
+  link        String?
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([fecha])
+  @@index([estado])
+  @@index([prioridad])
+}
+
+model TatiNote {
+  id        Int      @id @default(autoincrement())
+  titulo    String
+  contenido String?
+  color     String   @default("amber") // "amber", "blue", "green", "rose", "purple", "zinc"
+  categoria String?  @default("general") // "general", "importante", "idea", "cliente", "seguimiento"
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([pinned])
+  @@index([createdAt])
+}
+
+model TatiDayRecord {
+  id         Int      @id @default(autoincrement())
+  fecha      DateTime @unique @db.Date
+  resumen    String?  // Brief summary of the day
+  logros     String[] @default([]) // Array of achievements
+  pendientes String[] @default([]) // Things left pending
+  notas      String?  // General notes about the day
+  estado     String   @default("activo") // "activo", "cerrado"
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([fecha])
+}
