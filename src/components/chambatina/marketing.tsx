@@ -29,106 +29,7 @@ import {
 import { toast } from 'sonner';
 
 // =========================================
-// 1. WHATSAPP FLOATING BUTTON
-// =========================================
-const CHAMBATINA_WHATSAPP_NUMBERS = [
-  { name: 'Ventas', number: '17869426904', label: 'Pedidos y cotizaciones' },
-  { name: 'Soporte', number: '17867846421', label: 'Consultas y soporte' },
-];
-
-export function WhatsAppFloat() {
-  const [open, setOpen] = useState(false);
-  const [msg, setMsg] = useState('');
-
-  const handleSend = (number: string) => {
-    const text = encodeURIComponent(msg || 'Hola, quiero informacion sobre Chambatina');
-    window.open(`https://wa.me/${number}?text=${text}`, '_blank');
-    setOpen(false);
-  };
-
-  return (
-    <>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="fixed bottom-24 right-4 z-[90] w-72 bg-white rounded-2xl shadow-2xl border border-green-100 overflow-hidden"
-          >
-            <div className="bg-green-500 p-3 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <MessageCircle className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <p className="text-white font-semibold text-sm">Chambatina</p>
-                <p className="text-green-100 text-[10px]">En linea - Responde rapido</p>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="ml-auto text-white/70 hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="p-3">
-              <p className="text-xs text-zinc-500 mb-2">Escribe tu mensaje:</p>
-              <div className="flex gap-2 mb-3">
-                <input
-                  value={msg}
-                  onChange={(e) => setMsg(e.target.value)}
-                  placeholder="Hola, necesito..."
-                  className="flex-1 h-9 px-3 rounded-lg border border-zinc-200 text-xs"
-                  style={{ color: '#18181b' }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend(CHAMBATINA_WHATSAPP_NUMBERS[0].number)}
-                />
-              </div>
-              {/* Two contact options */}
-              <div className="space-y-2">
-                {CHAMBATINA_WHATSAPP_NUMBERS.map((contact) => (
-                  <button
-                    key={contact.number}
-                    onClick={() => handleSend(contact.number)}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-green-50 hover:bg-green-100 border border-green-100 transition-colors"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-                      <Send className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="text-left flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-green-800">{contact.name}</p>
-                      <p className="text-[10px] text-green-600">{contact.label}</p>
-                    </div>
-                    <div className="text-[10px] text-green-500 font-mono">
-                      {contact.number.slice(-4)}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Floating button */}
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 1, type: 'spring' }}
-        onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-4 z-[90] w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-      >
-        {open ? (
-          <X className="h-6 w-6" />
-        ) : (
-          <MessageCircle className="h-6 w-6" />
-        )}
-      </motion.button>
-    </>
-  );
-}
-
-// =========================================
-// 2. TIKTOK SHOP FLOATING BUTTON
+// 1. TIKTOK SHOP FLOATING BUTTON
 // =========================================
 const TIKTOK_SHOP_URL = 'https://www.tiktok.com/t/ZP9NxemkP7Q78-uOgm6/';
 
@@ -150,7 +51,7 @@ export function TikTokFloat() {
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="fixed bottom-36 left-4 z-[90] w-72 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden"
+            className="fixed bottom-40 right-4 z-[90] w-72 bg-white rounded-2xl shadow-2xl border border-zinc-100 overflow-hidden"
           >
             {/* TikTok-style header */}
             <div className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 p-3 flex items-center gap-2">
@@ -199,7 +100,7 @@ export function TikTokFloat() {
         animate={{ scale: 1 }}
         transition={{ delay: 1.2, type: 'spring' }}
         onClick={() => setOpen(!open)}
-        className="fixed bottom-20 left-4 z-[90] w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-400 via-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 hover:shadow-pink-500/50"
+        className="fixed bottom-24 right-4 z-[90] w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-400 via-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 hover:shadow-pink-500/50"
       >
         {open ? (
           <X className="h-6 w-6" />
