@@ -171,7 +171,7 @@ export function PublicFormsAdmin() {
   // Load submissions for a form
   const fetchSubmissions = useCallback(async (formId: number) => {
     try {
-      const res = await fetch(`/api/public-forms/${formId}/approve?estado=${filterEstado}`);
+      const res = await fetch(`/api/public-forms/submissions?formId=${formId}&estado=${filterEstado}`);
       const json = await res.json();
       if (json.ok) {
         setSubmissions(json.data);
@@ -234,7 +234,7 @@ export function PublicFormsAdmin() {
 
   async function handleApprove(subId: number, crearPedido: boolean) {
     try {
-      const res = await fetch(`/api/public-forms/${subId}/approve`, {
+      const res = await fetch(`/api/public-forms/submissions/${subId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accion: 'aprobar', crearPedido }),
@@ -258,7 +258,7 @@ export function PublicFormsAdmin() {
   async function handleReject() {
     if (!rejectSubId) return;
     try {
-      const res = await fetch(`/api/public-forms/${rejectSubId}/approve`, {
+      const res = await fetch(`/api/public-forms/submissions/${rejectSubId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accion: 'rechazar', motivoRechazo: rejectReason }),

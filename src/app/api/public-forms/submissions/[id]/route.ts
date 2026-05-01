@@ -1,48 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// GET /api/public-forms/[id]/approve — Get submissions for a form
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const { searchParams } = new URL(req.url);
-    const estado = searchParams.get('estado');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-
-    const where: any = { formId: parseInt(id) };
-    if (estado && estado !== 'todos') where.estado = estado;
-
-    const [submissions, total] = await Promise.all([
-      db.publicFormSubmission.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      db.publicFormSubmission.count({ where }),
-    ]);
-
-    return NextResponse.json({
-      ok: true,
-      data: submissions,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    });
-  } catch (err: any) {
-    console.error('Error fetching submissions:', err);
-    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
-  }
-}
-
-// POST /api/public-forms/[id]/approve — Approve a submission (and optionally create Pedido)
+// POST /api/public-forms/submissions/[id] — Approve or reject a submission
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -76,7 +35,6 @@ export async function POST(
     if (accion === 'aprobar') {
       updateData.estado = 'aprobado';
 
-      // Optionally create a Pedido from the form data
       if (crearPedido) {
         const datos = JSON.parse(submission.datos);
         try {
@@ -99,7 +57,6 @@ export async function POST(
           pedidoId = pedido.id;
         } catch (pedidoErr: any) {
           console.error('Error creating pedido from submission:', pedidoErr);
-          // Don't fail the approval if pedido creation fails
         }
       }
     } else {

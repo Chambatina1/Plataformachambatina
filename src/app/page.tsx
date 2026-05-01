@@ -30,7 +30,6 @@ import { ServiciosDigitales } from '@/components/chambatina/servicios-digitales'
 import { ServiciosDigitalesAdmin } from '@/components/chambatina/servicios-digitales-admin';
 import { MessagesAdmin } from '@/components/chambatina/messages-admin';
 import { ElTati } from '@/components/chambatina/el-tati';
-import { PublicFormsAdmin } from '@/components/chambatina/public-forms-admin';
 import { MessagesUser } from '@/components/chambatina/messages-user';
 import { Resenas } from '@/components/chambatina/resenas';
 import { Button } from '@/components/ui/button';
@@ -314,7 +313,6 @@ export default function Page() {
         case 'servicios-digitales-admin': return <ServiciosDigitalesAdmin />;
         case 'messages-admin': return <MessagesAdmin />;
         case 'el-tati': return <ElTati />;
-        case 'public-forms': return <PublicFormsAdmin />;
         default: return <AdminDashboard />;
       }
     }
