@@ -34,7 +34,7 @@ import {
 
 // ---- PUBLIC NAV ----
 
-const MARKETPLACE_URL = '/marketplace';
+const MARKETPLACE_URL = 'https://chambatina-marketplace.onrender.com';
 
 const publicNavItems: { view: PublicView; label: string; icon: typeof Home; external?: string }[] = [
   { view: 'home', label: 'Inicio', icon: Home },
