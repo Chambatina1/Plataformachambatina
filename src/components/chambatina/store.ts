@@ -160,7 +160,7 @@ export const useAppStore = create<AppState>()(
         if (currentMode === 'admin') {
           set({ adminView: 'pedido-form', selectedPedidoId: null });
         } else {
-          set({ currentView: 'pedido-public' });
+          set({ currentView: 'envio-form' });
         }
       },
       goToComprar: (product) => {
@@ -169,7 +169,7 @@ export const useAppStore = create<AppState>()(
         if (currentMode === 'admin') {
           set({ adminView: 'pedido-form' });
         } else {
-          set({ currentView: 'pedido-public' });
+          set({ currentView: 'envio-form' });
         }
       },
       goBackToPublic: () =>

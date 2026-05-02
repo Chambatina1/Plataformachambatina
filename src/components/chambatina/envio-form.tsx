@@ -6,6 +6,15 @@ import { ArrowLeft, Package, ExternalLink } from 'lucide-react';
 
 export function EnvioForm() {
   const setCurrentView = useAppStore((s) => s.setCurrentView);
+  const selectedProduct = useAppStore((s) => s.selectedProduct);
+
+  const handleBack = () => {
+    if (selectedProduct) {
+      setCurrentView('tienda');
+    } else {
+      setCurrentView('home');
+    }
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
@@ -15,16 +24,18 @@ export function EnvioForm() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setCurrentView('tienda')}
+            onClick={handleBack}
             className="gap-1.5 text-zinc-600 hover:text-zinc-900"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm font-medium">Volver a Tienda</span>
+            <span className="text-sm font-medium">Volver</span>
           </Button>
           <div className="h-4 w-px bg-zinc-200" />
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-amber-500" />
-            <h2 className="text-sm font-semibold text-zinc-900">Formulario de Envío</h2>
+            <h2 className="text-sm font-semibold text-zinc-900">
+              {selectedProduct ? `Envío - ${selectedProduct.nombre}` : 'Formulario de Envío'}
+            </h2>
           </div>
         </div>
         <a
