@@ -60,6 +60,7 @@ interface SearchMeta {
   solvedcargoSource: boolean;
   solvedcargoResults: number;
   totalResults: number;
+  solvedcargoError?: boolean;
 }
 
 const SEARCH_HINTS = [
@@ -295,13 +296,26 @@ export function Rastreador() {
       {/* Results */}
       {!loading && results.length > 0 && (
         <div className="space-y-4 mb-6">
+          {/* Warning: SolvedCargo unavailable */}
+          {searchMeta?.solvedcargoError && results.length > 0 && (
+            <div className="w-full mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">SolvedCargo no disponible</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  No se pudo conectar con SolvedCargo. El estado mostrado puede estar desactualizado. Intenta de nuevo en unos minutos.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <p className="text-sm text-zinc-500">{results.length} resultado(s) encontrado(s)</p>
               {searchMeta?.solvedcargoSource && (
                 <Badge className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 border border-blue-200 gap-1">
                   <Globe className="h-3 w-3" />
-                  Desde SolvedCargo
+                  Verificado en SolvedCargo
                 </Badge>
               )}
             </div>

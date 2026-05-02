@@ -177,6 +177,7 @@ export async function GET(request: NextRequest) {
     // ============================================
     let solvedcargoSource = false;
     let estadoUpdated = false;
+    let solvedcargoError = false;
 
     if (!noSolvedCargo) {
       const searchQuery = q || searchCPK || searchCarnet || '';
@@ -226,20 +227,23 @@ export async function GET(request: NextRequest) {
                 } catch (updateErr) {
                   console.error('[Tracking] Error actualizando estado en BD:', updateErr);
                 }
-
-                // Update the result object with fresh data
-                results[i] = {
-                  ...entry,
-                  estado: newEstado,
-                  fecha: freshData.fecha || entry.fecha,
-                  descripcion: freshData.descripcion || entry.descripcion,
-                  embarcador: freshData.embarcador || entry.embarcador,
-                  consignatario: freshData.consignatario || entry.consignatario,
-                  carnetPrincipal: freshData.carnetPrincipal || entry.carnetPrincipal,
-                  _source: 'solvedcargo',
-                  _estadoUpdated: true,
-                };
+              } else {
+                console.log(`[Tracking] Estado confirmado por SolvedCargo: ${entry.cpk} "${entry.estado}" (sin cambios)`);
               }
+
+              // ALWAYS mark as verified by SolvedCargo, even if estado didn't change
+              // This ensures the user knows the data is fresh from SolvedCargo
+              results[i] = {
+                ...entry,
+                estado: newEstado,
+                fecha: freshData.fecha || entry.fecha,
+                descripcion: freshData.descripcion || entry.descripcion,
+                embarcador: freshData.embarcador || entry.embarcador,
+                consignatario: freshData.consignatario || entry.consignatario,
+                carnetPrincipal: freshData.carnetPrincipal || entry.carnetPrincipal,
+                _source: 'solvedcargo',
+                _estadoUpdated: entry.estado !== newEstado,
+              };
 
               scMap.delete(cpkNorm); // Mark as processed
             }
@@ -269,7 +273,9 @@ export async function GET(request: NextRequest) {
         }
       } catch (scError) {
         // SolvedCargo might be down - return local data gracefully
+        // Set flag so frontend can warn users that data might be stale
         console.error('[Tracking] Error consultando SolvedCargo, se muestran datos locales:', scError);
+        solvedcargoError = true;
       }
     }
 
@@ -321,6 +327,7 @@ export async function GET(request: NextRequest) {
       meta: {
         solvedcargoSource,
         estadoUpdated,
+        solvedcargoError,
         solvedcargoResults: results.filter(r => r._source === 'solvedcargo').length,
         totalResults: results.length,
       },
