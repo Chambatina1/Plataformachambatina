@@ -122,7 +122,7 @@ export function Tienda() {
       {/* Hacer Envio - Boton */}
       <div className="mb-6">
         <button
-          onClick={() => window.open('https://chambatina-forms.onrender.com', '_blank')}
+          onClick={() => setCurrentView('envio-form')}
           className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl p-4 flex items-center gap-3 shadow-lg shadow-orange-500/20 transition-all duration-200 hover:shadow-xl"
         >
           <Package className="h-6 w-6" />
@@ -130,7 +130,7 @@ export function Tienda() {
             <p className="font-bold text-sm">Hacer un Envío</p>
             <p className="text-orange-100 text-xs">Registra tu paquete con SolvedCargo</p>
           </div>
-          <ExternalLink className="h-4 w-4 ml-auto opacity-70" />
+          <ChevronRight className="h-4 w-4 ml-auto opacity-70" />
         </button>
       </div>
 

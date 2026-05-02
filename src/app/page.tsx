@@ -32,6 +32,7 @@ import { MessagesAdmin } from '@/components/chambatina/messages-admin';
 import { ElTati } from '@/components/chambatina/el-tati';
 import { MessagesUser } from '@/components/chambatina/messages-user';
 import { Resenas } from '@/components/chambatina/resenas';
+import { EnvioForm } from '@/components/chambatina/envio-form';
 import { Button } from '@/components/ui/button';
 
 // Error-safe component wrapper
@@ -292,6 +293,7 @@ export default function Page() {
         case 'servicios-digitales': return <ServiciosDigitales />;
         case 'messages': return <MessagesUser />;
         case 'resenas': return <Resenas />;
+        case 'envio-form': return <EnvioForm />;
         default: return <Home />;
       }
     } else {
