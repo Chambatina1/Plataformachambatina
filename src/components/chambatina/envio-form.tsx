@@ -52,7 +52,7 @@ export function EnvioForm() {
       {/* iframe with the shipment form */}
       <div className="flex-1 bg-white">
         <iframe
-          src="https://chambatina-forms.onrender.com"
+          src="https://chambatina-forms.onrender.com?embed=true"
           className="w-full h-full border-0"
           title="Formulario de Envío - SolvedCargo"
           allow="clipboard-write"
