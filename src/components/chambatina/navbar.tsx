@@ -29,6 +29,7 @@ import {
   Mail,
   Sparkles,
   Calendar,
+  ExternalLink,
 } from 'lucide-react';
 
 // ---- PUBLIC NAV ----
@@ -357,6 +358,21 @@ function AdminNavbar() {
               {adminNavItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.view);
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.label}
+                      href={item.external}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-amber-200 hover:text-white hover:bg-white/10 transition-all duration-200"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="hidden xl:inline">{item.label}</span>
+                      <ExternalLink className="h-3 w-3 opacity-60" />
+                    </a>
+                  );
+                }
                 return (
                   <button
                     key={item.view}
@@ -418,6 +434,22 @@ function AdminNavbar() {
                     {adminNavItems.map((item) => {
                       const Icon = item.icon;
                       const active = isActive(item.view);
+                      if (item.external) {
+                        return (
+                          <a
+                            key={item.label}
+                            href={item.external}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setSheetOpen(false)}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-amber-200 hover:text-white hover:bg-white/10 transition-all duration-200"
+                          >
+                            <Icon className="h-5 w-5" />
+                            {item.label}
+                            <ExternalLink className="h-4 w-4 ml-auto opacity-60" />
+                          </a>
+                        );
+                      }
                       return (
                         <button
                           key={item.view}
