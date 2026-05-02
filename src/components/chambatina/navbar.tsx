@@ -23,6 +23,7 @@ import {
   Brain,
   Palette,
   Store,
+  Package,
   Users,
   UserPlus,
   Mail,
@@ -290,7 +291,7 @@ function PublicNavbar() {
 
 // ---- ADMIN NAV ----
 
-const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3 }[] = [
+const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3; external?: string }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { view: 'pedidos', label: 'Pedidos', icon: ClipboardList },
   { view: 'tracking', label: 'Tracking', icon: Database },
@@ -304,6 +305,7 @@ const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3 }[
   { view: 'servicios-digitales-admin', label: 'Digitales', icon: Sparkles },
   { view: 'messages-admin', label: 'Mensajes', icon: MessageSquare },
   { view: 'config', label: 'Config', icon: Settings },
+  { view: 'dashboard', label: 'Envíos CPK', icon: Package, external: 'https://chambatina-forms.onrender.com/admin' },
 ];
 
 function AdminNavbar() {
@@ -311,6 +313,12 @@ function AdminNavbar() {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const handleNav = (view: AdminView) => {
+    const item = adminNavItems.find(n => n.view === view);
+    if (item?.external) {
+      window.open(item.external, '_blank');
+      setSheetOpen(false);
+      return;
+    }
     setAdminView(view);
     setSheetOpen(false);
   };

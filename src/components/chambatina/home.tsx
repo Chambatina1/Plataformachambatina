@@ -116,7 +116,7 @@ export function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
                 size="lg"
-                onClick={() => goToNuevoPedido()}
+                onClick={() => window.open('https://chambatina-forms.onrender.com', '_blank')}
                 className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 shadow-lg shadow-orange-500/20"
               >
                 <Package className="h-5 w-5 mr-2" />
