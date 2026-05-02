@@ -297,7 +297,7 @@ const adminNavItems: { view: AdminView; label: string; icon: typeof BarChart3; e
   { view: 'pedidos', label: 'Pedidos', icon: ClipboardList },
   { view: 'tracking', label: 'Tracking', icon: Database },
   { view: 'tienda-admin', label: 'Tienda', icon: Store },
-  { view: 'servicios-admin', label: 'Servicios', icon: Handshake },
+  { view: 'servicios-admin', label: 'Marketplace', icon: Handshake, external: 'https://chambatina-marketplace-admin.onrender.com' },
   { view: 'ai-training', label: 'IA Chat', icon: Brain },
   { view: 'apariencia', label: 'Apariencia', icon: Palette },
   { view: 'users', label: 'Usuarios', icon: Users },
