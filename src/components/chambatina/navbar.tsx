@@ -113,12 +113,12 @@ function PublicNavbar() {
               onClick={() => handleNav('home')}
               className="flex items-center gap-3 hover:opacity-90 transition-opacity"
             >
-              <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center overflow-hidden">
-                <Image src="/logo.png" alt="Chambatina" width={36} height={36} className="object-contain" />
+              <div className="w-11 h-11 rounded-lg bg-orange-50 flex items-center justify-center overflow-hidden">
+                <Image src="/logo.png" alt="Chambatina" width={44} height={44} className="object-contain" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-zinc-900 tracking-wide">CHAMBATINA</h1>
-                <p className="text-[10px] text-orange-500 font-medium tracking-widest uppercase -mt-0.5">
+                <h1 className="text-xl font-extrabold text-zinc-900 tracking-wide">CHAMBATINA</h1>
+                <p className="text-[10px] text-orange-500 font-semibold tracking-widest uppercase -mt-0.5">
                   Envíos Internacionales
                 </p>
               </div>
@@ -188,12 +188,12 @@ function PublicNavbar() {
                 <div className="flex flex-col h-full">
                   <div className="p-4 border-b border-zinc-100">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center overflow-hidden">
-                        <Image src="/logo.png" alt="Chambatina" width={36} height={36} className="object-contain" />
+                      <div className="w-11 h-11 rounded-lg bg-orange-50 flex items-center justify-center overflow-hidden">
+                        <Image src="/logo.png" alt="Chambatina" width={44} height={44} className="object-contain" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-bold text-zinc-900">CHAMBATINA</h2>
-                        <p className="text-[10px] text-orange-500 font-medium tracking-widest uppercase">
+                        <h2 className="text-xl font-extrabold text-zinc-900">CHAMBATINA</h2>
+                        <p className="text-[10px] text-orange-500 font-semibold tracking-widest uppercase">
                           Envíos Internacionales
                         </p>
                       </div>
@@ -337,12 +337,12 @@ function AdminNavbar() {
           <div className="flex items-center justify-between h-16">
             {/* Logo + Admin Badge */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center overflow-hidden">
-                <Image src="/logo.png" alt="Chambatina" width={36} height={36} className="object-contain" />
+              <div className="w-11 h-11 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center overflow-hidden">
+                <Image src="/logo.png" alt="Chambatina" width={44} height={44} className="object-contain" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold text-white tracking-wide">CHAMBATINA</h1>
+                  <h1 className="text-xl font-extrabold text-white tracking-wide">CHAMBATINA</h1>
                   <span className="text-[10px] bg-white/20 text-amber-100 px-2 py-0.5 rounded font-semibold tracking-wide">
                     ADMIN
                   </span>
@@ -417,12 +417,12 @@ function AdminNavbar() {
                 <div className="flex flex-col h-full">
                   <div className="p-4 border-b border-white/10">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center overflow-hidden">
-                        <Image src="/logo.png" alt="Chambatina" width={32} height={32} className="object-contain" />
+                      <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center overflow-hidden">
+                        <Image src="/logo.png" alt="Chambatina" width={40} height={40} className="object-contain" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h2 className="text-base font-bold text-white">Admin Panel</h2>
+                          <h2 className="text-lg font-extrabold text-white">Admin Panel</h2>
                           <span className="text-[9px] bg-white/20 text-amber-100 px-1.5 py-0.5 rounded font-semibold">
                             ADMIN
                           </span>
