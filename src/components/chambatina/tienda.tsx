@@ -84,12 +84,8 @@ export function Tienda() {
 
   const handleImageError = (productId: number) => { setImgErrors((prev) => new Set(prev).add(productId)); };
 
-  const handleComprar = (product: Product) => {
-    goToComprar({
-      nombre: product.nombre,
-      precio: product.precio,
-      categoria: product.categoria,
-    });
+  const handleComprar = (_product: Product) => {
+    setCurrentView('envio-form');
   };
 
   if (loading) return (
